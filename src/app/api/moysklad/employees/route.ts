@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 const MOYSKLAD_API_URL = 'https://api.moysklad.ru/api/remap/1.2'
 const MOYSKLAD_TOKEN = process.env.MOYSKLAD_TOKEN
+
+// Group IDs from MoySklad
+const GROUPS = {
+  online: '3d2ee727-b162-11ee-0a80-0d180015051c',
+  tsum: '3d2e6b45-b162-11ee-0a80-0d1800150517',
+  main: '22a727f0-b129-11ee-0a80-006400003b12',
+}
 
 interface MoySkladEmployee {
   id: string
@@ -26,7 +34,7 @@ interface MoySkladResponse {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     if (!MOYSKLAD_TOKEN) {
       return NextResponse.json(
@@ -35,10 +43,20 @@ export async function GET() {
       )
     }
 
+    // Get department filter from query params
+    const searchParams = request.nextUrl.searchParams
+    const department = searchParams.get('department') // 'online', 'tsum', or null for all
+
+    // Build filter
+    let filter = 'archived=false'
+    if (department && GROUPS[department as keyof typeof GROUPS]) {
+      const groupId = GROUPS[department as keyof typeof GROUPS]
+      filter += `;group=https://api.moysklad.ru/api/remap/1.2/entity/group/${groupId}`
+    }
+
     // Fetch employees from MoySklad
-    // Filter: only active (not archived) employees
     const response = await fetch(
-      `${MOYSKLAD_API_URL}/entity/employee?filter=archived=false&limit=100`,
+      `${MOYSKLAD_API_URL}/entity/employee?filter=${encodeURIComponent(filter)}&limit=100`,
       {
         headers: {
           'Authorization': `Bearer ${MOYSKLAD_TOKEN}`,
@@ -60,13 +78,27 @@ export async function GET() {
 
     const data: MoySkladResponse = await response.json()
 
-    // Transform to simplified format
-    const employees = data.rows.map((emp) => ({
-      id: emp.id,
-      name: emp.name,
-      email: emp.email || null,
-      phone: emp.phone || null,
-    }))
+    // Transform to simplified format and filter out service accounts
+    // Service accounts usually have lowercase names or contain "отдел", "склад", etc.
+    const employees = data.rows
+      .filter((emp) => {
+        const name = emp.name.toLowerCase()
+        // Exclude service accounts
+        if (name.includes('отдел') || name.includes('склад') || name.includes('смм')) {
+          return false
+        }
+        // Check if name starts with uppercase (real person)
+        if (emp.name[0] !== emp.name[0].toUpperCase()) {
+          return false
+        }
+        return true
+      })
+      .map((emp) => ({
+        id: emp.id,
+        name: emp.name,
+        email: emp.email || null,
+        phone: emp.phone || null,
+      }))
 
     // Sort by name
     employees.sort((a, b) => a.name.localeCompare(b.name, 'ru'))
