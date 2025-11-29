@@ -10,12 +10,13 @@ import { SalesTab } from '@/components/dashboard/SalesTab'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Calculator, TrendingUp, LogOut, Loader2, User, Gamepad2 } from 'lucide-react'
+import { Calculator, TrendingUp, LogOut, Loader2, User, Gamepad2, Users, Settings } from 'lucide-react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 export default function DashboardPage() {
-  const { user, profile, loading, signOut, isAuthenticated } = useAuth()
+  const { user, profile, loading, signOut, isAuthenticated, isDirector } = useAuth()
   const [activeTab, setActiveTab] = useState('calculator')
   const router = useRouter()
 
@@ -71,14 +72,39 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSignOut}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <LogOut className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            {isDirector && (
+              <>
+                <Link href="/team">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <Users className="w-4 h-4" />
+                  </Button>
+                </Link>
+                <Link href="/admin">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                </Link>
+              </>
+            )}
+            <Link href="/profile">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <User className="w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
