@@ -97,15 +97,15 @@ export const LevelsTable = memo(function LevelsTable() {
             <p className="text-xs font-medium mb-2">Пример: продажи 2.5 млн</p>
             <div className="space-y-1 text-[11px] text-muted-foreground">
               <div className="flex justify-between items-center">
-                <span><span className="text-slate-400">Iron</span> 0-1 млн × 5%</span>
+                <span><span className="text-gray-400">Gray</span> 0-1 млн × 5%</span>
                 <span className="text-foreground">50 000 ₸</span>
               </div>
               <div className="flex justify-between items-center">
-                <span><span className="text-amber-700">Bronze</span> 1-2 млн × 6%</span>
+                <span><span className="text-cyan-400">Cyan</span> 1-2 млн × 6%</span>
                 <span className="text-foreground">60 000 ₸</span>
               </div>
               <div className="flex justify-between items-center">
-                <span><span className="text-slate-300">Silver</span> 2-2.5 млн × 7%</span>
+                <span><span className="text-blue-500">Blue</span> 2-2.5 млн × 7%</span>
                 <span className="text-foreground">35 000 ₸</span>
               </div>
               <div className="flex justify-between pt-1 border-t border-border/50 font-medium">

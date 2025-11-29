@@ -23,7 +23,7 @@ export interface RoleConfig {
 
 /**
  * Онлайн-менеджер
- * Прогрессивная шкала с шагом 500к после 2 млн
+ * CS2 Premier стиль рейтинга
  */
 export const ONLINE_MANAGER_CONFIG: RoleConfig = {
   id: 'online-manager',
@@ -37,64 +37,64 @@ export const ONLINE_MANAGER_CONFIG: RoleConfig = {
       minSales: 0,
       maxSales: 1000000,
       percentage: 5,
-      levelName: 'Iron',
-      levelEmoji: '🔘',
+      levelName: 'Gray',        // CS2: 0-4,999
+      levelEmoji: '⚫',
     },
     {
       minSales: 1000000,
       maxSales: 2000000,
       percentage: 6,
-      levelName: 'Bronze',
-      levelEmoji: '🥉',
+      levelName: 'Cyan',        // CS2: 5,000-9,999
+      levelEmoji: '🔵',
     },
     {
       minSales: 2000000,
       maxSales: 2500000,
       percentage: 7,
-      levelName: 'Silver',
-      levelEmoji: '🥈',
+      levelName: 'Blue',        // CS2: 10,000-14,999
+      levelEmoji: '💙',
     },
     {
       minSales: 2500000,
       maxSales: 3000000,
       percentage: 8,
-      levelName: 'Gold',
-      levelEmoji: '🥇',
+      levelName: 'Purple',      // CS2: 15,000-19,999
+      levelEmoji: '💜',
     },
     {
       minSales: 3000000,
       maxSales: 3500000,
       percentage: 9,
-      levelName: 'Platinum',
-      levelEmoji: '💠',
+      levelName: 'Pink',        // CS2: 20,000-24,999
+      levelEmoji: '💗',
     },
     {
       minSales: 3500000,
       maxSales: 4000000,
       percentage: 10,
-      levelName: 'Diamond',
-      levelEmoji: '💎',
+      levelName: 'Red',         // CS2: 25,000-29,999
+      levelEmoji: '❤️',
     },
     {
       minSales: 4000000,
       maxSales: 4500000,
       percentage: 11,
-      levelName: 'Ascendant',
-      levelEmoji: '🌟',
+      levelName: 'Orange',      // CS2: 30,000+
+      levelEmoji: '🧡',
     },
     {
       minSales: 4500000,
       maxSales: 5000000,
       percentage: 12,
-      levelName: 'Immortal',
-      levelEmoji: '👑',
+      levelName: 'Gold',        // CS2: Elite
+      levelEmoji: '💛',
     },
     {
       minSales: 5000000,
       maxSales: 5500000,
       percentage: 13,
-      levelName: 'Radiant',
-      levelEmoji: '⚡',
+      levelName: 'Global',      // CS2: Global Elite
+      levelEmoji: '⭐',
     },
   ],
 };

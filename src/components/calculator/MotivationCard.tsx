@@ -59,7 +59,7 @@ export const MotivationCard = memo(function MotivationCard({ result }: Motivatio
               <div className="flex items-center gap-2 mb-1">
                 <Sparkles className="w-4 h-4 text-yellow-400" />
                 <h3 className="text-lg font-bold text-yellow-400">
-                  Radiant достигнут!
+                  Global Elite!
                 </h3>
               </div>
               <p className="text-sm text-muted-foreground">
