@@ -94,9 +94,18 @@ const TierItem = memo(function TierItem({
         />
       </div>
 
-      {/* Active indicator */}
+      {/* Active indicator - animated arrow */}
       {tier.isCurrentTier && (
-        <div className="absolute -right-0.5 -top-0.5 w-2 h-2 bg-primary rounded-full" />
+        <>
+          <div className="absolute -right-0.5 -top-0.5 w-2 h-2 bg-primary rounded-full" />
+          <motion.div
+            className="absolute -left-4 top-1/2 -translate-y-1/2 text-primary font-bold"
+            animate={{ x: [0, 3, 0] }}
+            transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
+          >
+            →
+          </motion.div>
+        </>
       )}
     </motion.div>
   )

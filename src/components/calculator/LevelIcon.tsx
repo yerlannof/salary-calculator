@@ -2,63 +2,71 @@
 
 import { memo } from "react"
 import {
-  Sprout,
-  Star,
-  Flame,
-  Dumbbell,
-  Target,
+  Circle,
+  Shield,
+  Sword,
+  Medal,
+  Hexagon,
   Gem,
-  Crown,
-  Rocket,
+  ArrowUpCircle,
+  Skull,
+  Sun,
   LucideIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-// Маппинг уровней на иконки и цвета
+// Valorant-style rank configuration
 export const LEVEL_CONFIG: Record<string, {
   icon: LucideIcon
   color: string
   bg: string
+  glow?: string
 }> = {
-  'Новичок': {
-    icon: Sprout,
-    color: 'text-green-500',
-    bg: 'bg-green-500/20'
+  'Iron': {
+    icon: Circle,
+    color: 'text-slate-400',
+    bg: 'bg-slate-400/20'
   },
-  'Продавец': {
-    icon: Star,
+  'Bronze': {
+    icon: Shield,
+    color: 'text-amber-700',
+    bg: 'bg-amber-700/20'
+  },
+  'Silver': {
+    icon: Sword,
+    color: 'text-slate-300',
+    bg: 'bg-slate-300/20'
+  },
+  'Gold': {
+    icon: Medal,
     color: 'text-yellow-500',
     bg: 'bg-yellow-500/20'
   },
-  'Опытный': {
-    icon: Flame,
-    color: 'text-orange-500',
-    bg: 'bg-orange-500/20'
+  'Platinum': {
+    icon: Hexagon,
+    color: 'text-cyan-400',
+    bg: 'bg-cyan-400/20'
   },
-  'Мастер': {
-    icon: Dumbbell,
-    color: 'text-blue-500',
-    bg: 'bg-blue-500/20'
-  },
-  'Профи': {
-    icon: Target,
-    color: 'text-cyan-500',
-    bg: 'bg-cyan-500/20'
-  },
-  'Эксперт': {
+  'Diamond': {
     icon: Gem,
-    color: 'text-purple-500',
-    bg: 'bg-purple-500/20'
+    color: 'text-violet-400',
+    bg: 'bg-violet-400/20'
   },
-  'Легенда': {
-    icon: Crown,
-    color: 'text-amber-500',
-    bg: 'bg-amber-500/20'
+  'Ascendant': {
+    icon: ArrowUpCircle,
+    color: 'text-emerald-400',
+    bg: 'bg-emerald-400/20'
   },
-  'Бог продаж': {
-    icon: Rocket,
+  'Immortal': {
+    icon: Skull,
     color: 'text-rose-500',
     bg: 'bg-rose-500/20'
+  },
+  'Radiant': {
+    icon: Sun,
+    color: 'text-yellow-300',
+    bg: 'bg-yellow-300/20',
+    glow: 'drop-shadow-[0_0_8px_rgba(253,224,71,0.6)]'
   },
 }
 
@@ -73,7 +81,7 @@ export const LevelIcon = memo(function LevelIcon({
   size = 'md',
   className
 }: LevelIconProps) {
-  const config = LEVEL_CONFIG[levelName] || LEVEL_CONFIG['Новичок']
+  const config = LEVEL_CONFIG[levelName] || LEVEL_CONFIG['Iron']
   const Icon = config.icon
 
   const sizeClasses = {
@@ -83,7 +91,7 @@ export const LevelIcon = memo(function LevelIcon({
   }
 
   return (
-    <Icon className={cn(sizeClasses[size], config.color, className)} />
+    <Icon className={cn(sizeClasses[size], config.color, config.glow, className)} />
   )
 })
 
@@ -95,16 +103,17 @@ export const LevelBadge = memo(function LevelBadge({
   levelName: string
   className?: string
 }) {
-  const config = LEVEL_CONFIG[levelName] || LEVEL_CONFIG['Новичок']
+  const config = LEVEL_CONFIG[levelName] || LEVEL_CONFIG['Iron']
   const Icon = config.icon
 
   return (
     <div className={cn(
       "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
       config.bg,
+      config.glow && "shadow-lg",
       className
     )}>
-      <Icon className={cn("w-3.5 h-3.5", config.color)} />
+      <Icon className={cn("w-3.5 h-3.5", config.color, config.glow)} />
       <span>{levelName}</span>
     </div>
   )

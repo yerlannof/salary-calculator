@@ -5,14 +5,18 @@ import { motion, useReducedMotion } from "framer-motion"
 import { Slider } from "@/components/ui/slider"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { LevelProgress } from "./LevelProgress"
 import { SalaryBreakdown } from "./SalaryBreakdown"
 import { MotivationCard } from "./MotivationCard"
 import { HowItWorks } from "./HowItWorks"
+import { LevelsTable } from "./LevelsTable"
+import { StickyControls } from "./StickyControls"
 import { LevelIcon, LevelBadge } from "./LevelIcon"
+import { ThemeToggle } from "@/components/theme/ThemeToggle"
 import { calculateSalary, formatMoney, formatMoneyShort, SalaryCalculationResult } from "@/lib/calculations"
 import { ONLINE_MANAGER_CONFIG } from "@/config/salary-scales"
-import { Calculator, Zap } from "lucide-react"
+import { Calculator, Zap, TableProperties } from "lucide-react"
 
 const QUICK_VALUES = [
   { label: "1 млн", value: 1000000 },
@@ -25,10 +29,23 @@ export function SalaryCalculator() {
   const [sales, setSales] = useState(2500000)
   const [result, setResult] = useState<SalaryCalculationResult | null>(null)
   const [inputValue, setInputValue] = useState("2 500 000")
+  const [showStickyControls, setShowStickyControls] = useState(false)
   const shouldReduceMotion = useReducedMotion()
   const debounceRef = useRef<NodeJS.Timeout>()
+  const salesInputRef = useRef<HTMLDivElement>(null)
 
   const maxSales = ONLINE_MANAGER_CONFIG.maxMonthlySales || 5500000
+
+  // Scroll-based sticky controls
+  useEffect(() => {
+    const handleScroll = () => {
+      // Show sticky when scrolled more than 300px
+      setShowStickyControls(window.scrollY > 300)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const calculate = useCallback((amount: number) => {
     const calculationResult = calculateSalary(amount, ONLINE_MANAGER_CONFIG)
@@ -99,15 +116,46 @@ export function SalaryCalculator() {
   if (!result) return null
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="text-center pt-2">
-        <div className="inline-flex items-center gap-2 mb-1">
-          <Calculator className="w-5 h-5 text-primary" />
-          <h1 className="text-2xl font-bold">Калькулятор ЗП</h1>
+    <>
+      {/* Sticky controls panel */}
+      <StickyControls
+        isVisible={showStickyControls}
+        sales={sales}
+        maxSales={maxSales}
+        result={result}
+        onSalesChange={handleSliderChange}
+      />
+
+      <div className="space-y-4">
+      {/* Header with theme toggle */}
+      <div className="flex items-center justify-between pt-2">
+        <div className="flex-1" />
+        <div className="text-center">
+          <div className="inline-flex items-center gap-2 mb-1">
+            <Calculator className="w-5 h-5 text-primary" />
+            <h1 className="text-2xl font-bold">Калькулятор ЗП</h1>
+          </div>
+          <p className="text-sm text-muted-foreground">{ONLINE_MANAGER_CONFIG.name}</p>
         </div>
-        <p className="text-sm text-muted-foreground">{ONLINE_MANAGER_CONFIG.name}</p>
+        <div className="flex-1 flex justify-end">
+          <ThemeToggle />
+        </div>
       </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="calculator" className="w-full">
+        <TabsList className="w-full grid grid-cols-2">
+          <TabsTrigger value="calculator" className="gap-1.5">
+            <Calculator className="w-4 h-4" />
+            <span>Калькулятор</span>
+          </TabsTrigger>
+          <TabsTrigger value="levels" className="gap-1.5">
+            <TableProperties className="w-4 h-4" />
+            <span>Все уровни</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="calculator" className="space-y-5 mt-4">
 
       {/* Main salary display */}
       <Card className="bg-gradient-to-br from-card to-muted/30 border-primary/20 overflow-hidden">
@@ -142,11 +190,19 @@ export function SalaryCalculator() {
                 {formatMoney(result.totalBonus)}
               </span>
             </div>
+
+            {/* Average percentage insight */}
+            {result.totalSales > 0 && (
+              <p className="text-xs text-muted-foreground pt-2">
+                Это <span className="font-medium text-foreground">{result.fotPercentage.toFixed(1)}%</span> от твоих продаж
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
 
       {/* Sales input */}
+      <div ref={salesInputRef}>
       <Card className="bg-card/80 border-border/50">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
@@ -201,6 +257,7 @@ export function SalaryCalculator() {
           </div>
         </CardContent>
       </Card>
+      </div>
 
       {/* How it works */}
       <HowItWorks />
@@ -251,10 +308,20 @@ export function SalaryCalculator() {
         </Card>
       )}
 
-      {/* Footer */}
-      <div className="text-center text-xs text-muted-foreground py-4">
-        <p>GameOver Shop</p>
-      </div>
+        {/* Footer */}
+        <div className="text-center text-xs text-muted-foreground py-4">
+          <p>GameOver Shop</p>
+        </div>
+        </TabsContent>
+
+        <TabsContent value="levels" className="mt-4">
+          <LevelsTable />
+          <div className="text-center text-xs text-muted-foreground py-4">
+            <p>GameOver Shop</p>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
+    </>
   )
 }
