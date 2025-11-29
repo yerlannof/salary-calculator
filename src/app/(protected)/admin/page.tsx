@@ -21,9 +21,18 @@ import {
   Check,
   X,
   Pencil,
+  RefreshCw,
+  ChevronDown,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+
+interface MoySkladEmployee {
+  id: string
+  name: string
+  email: string | null
+  phone: string | null
+}
 
 export default function AdminPage() {
   const { profile, loading, isDirector } = useAuth()
@@ -31,6 +40,8 @@ export default function AdminPage() {
   const [loadingUsers, setLoadingUsers] = useState(true)
   const [editingUser, setEditingUser] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [moySkladEmployees, setMoySkladEmployees] = useState<MoySkladEmployee[]>([])
+  const [loadingEmployees, setLoadingEmployees] = useState(false)
   const router = useRouter()
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -54,6 +65,23 @@ export default function AdminPage() {
     }
   }, [supabase])
 
+  const fetchMoySkladEmployees = useCallback(async () => {
+    setLoadingEmployees(true)
+    try {
+      const response = await fetch('/api/moysklad/employees')
+      if (!response.ok) {
+        throw new Error('Failed to fetch employees')
+      }
+      const data = await response.json()
+      setMoySkladEmployees(data.employees || [])
+    } catch (err) {
+      console.error('Error fetching MoySklad employees:', err)
+      // Don't show error to user - just means MoySklad isn't configured yet
+    } finally {
+      setLoadingEmployees(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (!loading && !isDirector) {
       router.push('/dashboard')
@@ -61,8 +89,9 @@ export default function AdminPage() {
     }
     if (!loading) {
       fetchUsers()
+      fetchMoySkladEmployees()
     }
-  }, [loading, isDirector, router, fetchUsers])
+  }, [loading, isDirector, router, fetchUsers, fetchMoySkladEmployees])
 
   const updateUser = async (userId: string, updates: Partial<DbUser>) => {
     try {
@@ -230,27 +259,65 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      {/* MoySklad ID */}
+                      {/* MoySklad Employee */}
                       <div>
-                        <label className="text-xs text-muted-foreground mb-1 block">
-                          ID сотрудника в МойСклад
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            defaultValue={user.moysklad_employee_id || ''}
-                            placeholder="UUID из МойСклад"
-                            className="flex-1 px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
-                            onBlur={(e) => {
-                              if (e.target.value !== user.moysklad_employee_id) {
-                                updateUser(user.id, { moysklad_employee_id: e.target.value || null })
-                              }
-                            }}
-                          />
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs text-muted-foreground">
+                            Сотрудник МойСклад
+                          </label>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2"
+                            onClick={fetchMoySkladEmployees}
+                            disabled={loadingEmployees}
+                          >
+                            <RefreshCw className={cn("w-3 h-3", loadingEmployees && "animate-spin")} />
+                          </Button>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Найти ID можно в URL сотрудника в МойСклад
-                        </p>
+
+                        {moySkladEmployees.length > 0 ? (
+                          <div className="relative">
+                            <select
+                              value={user.moysklad_employee_id || ''}
+                              onChange={(e) => {
+                                updateUser(user.id, {
+                                  moysklad_employee_id: e.target.value || null
+                                })
+                              }}
+                              className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer"
+                            >
+                              <option value="">Не выбран</option>
+                              {moySkladEmployees.map((emp) => (
+                                <option key={emp.id} value={emp.id}>
+                                  {emp.name}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              defaultValue={user.moysklad_employee_id || ''}
+                              placeholder="UUID из МойСклад"
+                              className="flex-1 px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                              onBlur={(e) => {
+                                if (e.target.value !== user.moysklad_employee_id) {
+                                  updateUser(user.id, { moysklad_employee_id: e.target.value || null })
+                                }
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {user.moysklad_employee_id && (
+                          <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
+                            <Check className="w-3 h-3" />
+                            {moySkladEmployees.find(e => e.id === user.moysklad_employee_id)?.name || 'Связан'}
+                          </p>
+                        )}
                       </div>
                     </motion.div>
                   )}
