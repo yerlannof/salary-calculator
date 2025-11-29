@@ -12,11 +12,12 @@ import { MotivationCard } from "./MotivationCard"
 import { HowItWorks } from "./HowItWorks"
 import { LevelsTable } from "./LevelsTable"
 import { StickyControls } from "./StickyControls"
-import { LevelIcon, LevelBadge } from "./LevelIcon"
+import { LevelBadge } from "./LevelIcon"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
 import { calculateSalary, formatMoney, formatMoneyShort, SalaryCalculationResult } from "@/lib/calculations"
-import { ONLINE_MANAGER_CONFIG } from "@/config/salary-scales"
-import { Calculator, Zap, TableProperties } from "lucide-react"
+import { LOCATIONS, RoleConfig } from "@/config/salary-scales"
+import { Calculator, Zap, TableProperties, MapPin, Users, ChevronDown } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 const QUICK_VALUES = [
   { label: "1 млн", value: 1000000 },
@@ -26,6 +27,28 @@ const QUICK_VALUES = [
 ]
 
 export function SalaryCalculator() {
+  // Location & Role selection
+  const [selectedLocationId, setSelectedLocationId] = useState(LOCATIONS[0].id)
+  const [selectedRoleId, setSelectedRoleId] = useState(LOCATIONS[0].roles[0].id)
+
+  const selectedLocation = useMemo(() =>
+    LOCATIONS.find(l => l.id === selectedLocationId) || LOCATIONS[0],
+    [selectedLocationId]
+  )
+
+  const selectedRole = useMemo(() =>
+    selectedLocation.roles.find(r => r.id === selectedRoleId) || selectedLocation.roles[0],
+    [selectedLocation, selectedRoleId]
+  )
+
+  // When location changes, select first role of that location
+  useEffect(() => {
+    const location = LOCATIONS.find(l => l.id === selectedLocationId)
+    if (location && location.roles.length > 0) {
+      setSelectedRoleId(location.roles[0].id)
+    }
+  }, [selectedLocationId])
+
   const [sales, setSales] = useState(2500000)
   const [result, setResult] = useState<SalaryCalculationResult | null>(null)
   const [inputValue, setInputValue] = useState("2 500 000")
@@ -34,34 +57,47 @@ export function SalaryCalculator() {
   const debounceRef = useRef<NodeJS.Timeout>()
   const salesInputRef = useRef<HTMLDivElement>(null)
 
-  const maxSales = ONLINE_MANAGER_CONFIG.maxMonthlySales || 5500000
+  const maxSales = selectedRole.maxMonthlySales || 5500000
 
   // Scroll-based sticky controls
   useEffect(() => {
     const handleScroll = () => {
-      // Show sticky when scrolled more than 300px
-      setShowStickyControls(window.scrollY > 300)
+      setShowStickyControls(window.scrollY > 400)
     }
 
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  const calculate = useCallback((amount: number) => {
-    const calculationResult = calculateSalary(amount, ONLINE_MANAGER_CONFIG)
+  const calculate = useCallback((amount: number, role: RoleConfig) => {
+    const calculationResult = calculateSalary(amount, role)
     setResult(calculationResult)
   }, [])
 
   useEffect(() => {
-    calculate(sales)
+    calculate(sales, selectedRole)
     setInputValue(sales.toLocaleString('ru-RU'))
-  }, [sales, calculate])
+  }, [sales, selectedRole, calculate])
 
   // Load from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem('lastSales')
-    if (saved) {
-      const savedValue = parseInt(saved, 10)
+    const savedLocation = localStorage.getItem('selectedLocation')
+    const savedRole = localStorage.getItem('selectedRole')
+    const savedSales = localStorage.getItem('lastSales')
+
+    if (savedLocation) {
+      const location = LOCATIONS.find(l => l.id === savedLocation)
+      if (location) {
+        setSelectedLocationId(savedLocation)
+        if (savedRole) {
+          const role = location.roles.find(r => r.id === savedRole)
+          if (role) setSelectedRoleId(savedRole)
+        }
+      }
+    }
+
+    if (savedSales) {
+      const savedValue = parseInt(savedSales, 10)
       if (!isNaN(savedValue) && savedValue >= 0 && savedValue <= maxSales) {
         setSales(savedValue)
       }
@@ -71,7 +107,9 @@ export function SalaryCalculator() {
   // Save to localStorage on change
   useEffect(() => {
     localStorage.setItem('lastSales', sales.toString())
-  }, [sales])
+    localStorage.setItem('selectedLocation', selectedLocationId)
+    localStorage.setItem('selectedRole', selectedRoleId)
+  }, [sales, selectedLocationId, selectedRoleId])
 
   const handleSliderChange = (value: number[]) => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -103,7 +141,7 @@ export function SalaryCalculator() {
     if (!result) return []
     return [500000, 1000000].map(extra => {
       const newSales = Math.min(sales + extra, maxSales)
-      const newResult = calculateSalary(newSales, ONLINE_MANAGER_CONFIG)
+      const newResult = calculateSalary(newSales, selectedRole)
       return {
         extra,
         newSales,
@@ -111,7 +149,7 @@ export function SalaryCalculator() {
         total: newResult.totalSalary
       }
     }).filter(s => s.diff > 0)
-  }, [result, sales, maxSales])
+  }, [result, sales, maxSales, selectedRole])
 
   if (!result) return null
 
@@ -135,12 +173,75 @@ export function SalaryCalculator() {
             <Calculator className="w-5 h-5 text-primary" />
             <h1 className="text-2xl font-bold">Калькулятор ЗП</h1>
           </div>
-          <p className="text-sm text-muted-foreground">{ONLINE_MANAGER_CONFIG.name}</p>
         </div>
         <div className="flex-1 flex justify-end">
           <ThemeToggle />
         </div>
       </div>
+
+      {/* Location & Role Selector */}
+      <Card className="bg-card/80 border-border/50">
+        <CardContent className="p-4 space-y-3">
+          {/* Location selector */}
+          <div>
+            <label className="text-xs text-muted-foreground flex items-center gap-1.5 mb-2">
+              <MapPin className="w-3.5 h-3.5" />
+              Точка
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              {LOCATIONS.map((location) => (
+                <button
+                  key={location.id}
+                  onClick={() => setSelectedLocationId(location.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                    selectedLocationId === location.id
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted hover:bg-muted/80"
+                  )}
+                >
+                  <span>{location.emoji}</span>
+                  <span>{location.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Role selector */}
+          <div>
+            <label className="text-xs text-muted-foreground flex items-center gap-1.5 mb-2">
+              <Users className="w-3.5 h-3.5" />
+              Должность
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              {selectedLocation.roles.map((role) => (
+                <button
+                  key={role.id}
+                  onClick={() => setSelectedRoleId(role.id)}
+                  className={cn(
+                    "px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                    selectedRoleId === role.id
+                      ? "bg-secondary text-secondary-foreground"
+                      : "bg-muted hover:bg-muted/80"
+                  )}
+                >
+                  {role.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Selected info */}
+          <div className="flex items-center justify-between pt-2 border-t border-border/50">
+            <span className="text-sm text-muted-foreground">
+              {selectedLocation.emoji} {selectedLocation.name} → {selectedRole.name}
+            </span>
+            <span className="text-sm font-medium">
+              Оклад: {formatMoney(selectedRole.baseSalary)}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Tabs */}
       <Tabs defaultValue="calculator" className="w-full">
@@ -263,7 +364,7 @@ export function SalaryCalculator() {
       <HowItWorks />
 
       {/* Motivation card */}
-      <MotivationCard result={result} />
+      <MotivationCard result={result} roleConfig={selectedRole} />
 
       {/* Level progress */}
       <Card className="bg-card/80 border-border/50">
@@ -289,7 +390,7 @@ export function SalaryCalculator() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-2">
-              {scenarios.map(({ extra, newSales, diff, total }) => (
+              {scenarios.map(({ extra, newSales, diff }) => (
                 <button
                   key={extra}
                   onClick={() => setSales(newSales)}
@@ -315,7 +416,7 @@ export function SalaryCalculator() {
         </TabsContent>
 
         <TabsContent value="levels" className="mt-4">
-          <LevelsTable />
+          <LevelsTable roleConfig={selectedRole} />
           <div className="text-center text-xs text-muted-foreground py-4">
             <p>GameOver Shop</p>
           </div>

@@ -4,115 +4,114 @@
  */
 
 export interface SalaryTier {
-  minSales: number;      // Минимальные продажи для этого уровня
-  maxSales: number;      // Максимальные продажи для этого уровня
-  percentage: number;    // Процент бонуса
-  levelName: string;     // Название уровня
-  levelEmoji: string;    // Эмодзи уровня
+  minSales: number;
+  maxSales: number;
+  percentage: number;
+  levelName: string;
+  levelEmoji: string;
 }
 
 export interface RoleConfig {
   id: string;
   name: string;
-  description: string;
-  baseSalary: number;           // Базовый оклад
-  tiers: SalaryTier[];          // Уровни прогрессивной шкалы
-  teamBonusAmount?: number;     // Командный бонус (опционально)
-  maxMonthlySales?: number;     // Потолок продаж (опционально)
+  baseSalary: number;
+  tiers: SalaryTier[];
+  maxMonthlySales?: number;
+}
+
+export interface LocationConfig {
+  id: string;
+  name: string;
+  emoji: string;
+  roles: RoleConfig[];
 }
 
 /**
- * Онлайн-менеджер
- * CS2 Premier стиль рейтинга
+ * Стандартная прогрессивная шкала для всех должностей
  */
-export const ONLINE_MANAGER_CONFIG: RoleConfig = {
-  id: 'online-manager',
-  name: 'Онлайн-менеджер',
-  description: 'Обработка онлайн-заказов, консультирование клиентов в мессенджерах',
-  baseSalary: 50000,
-  maxMonthlySales: 5500000,
-  teamBonusAmount: 15000,
-  tiers: [
-    {
-      minSales: 0,
-      maxSales: 1000000,
-      percentage: 5,
-      levelName: 'Новичок',
-      levelEmoji: '🌱',
-    },
-    {
-      minSales: 1000000,
-      maxSales: 2000000,
-      percentage: 6,
-      levelName: 'Продавец',
-      levelEmoji: '💼',
-    },
-    {
-      minSales: 2000000,
-      maxSales: 2500000,
-      percentage: 7,
-      levelName: 'Опытный',
-      levelEmoji: '⭐',
-    },
-    {
-      minSales: 2500000,
-      maxSales: 3000000,
-      percentage: 8,
-      levelName: 'Мастер',
-      levelEmoji: '🎯',
-    },
-    {
-      minSales: 3000000,
-      maxSales: 3500000,
-      percentage: 9,
-      levelName: 'Профи',
-      levelEmoji: '🔥',
-    },
-    {
-      minSales: 3500000,
-      maxSales: 4000000,
-      percentage: 10,
-      levelName: 'Эксперт',
-      levelEmoji: '💎',
-    },
-    {
-      minSales: 4000000,
-      maxSales: 4500000,
-      percentage: 11,
-      levelName: 'Элита',
-      levelEmoji: '👑',
-    },
-    {
-      minSales: 4500000,
-      maxSales: 5000000,
-      percentage: 12,
-      levelName: 'Легенда',
-      levelEmoji: '🏆',
-    },
-    {
-      minSales: 5000000,
-      maxSales: 5500000,
-      percentage: 13,
-      levelName: 'Бог продаж',
-      levelEmoji: '⚡',
-    },
-  ],
-};
+const STANDARD_TIERS: SalaryTier[] = [
+  { minSales: 0, maxSales: 1000000, percentage: 5, levelName: 'Новичок', levelEmoji: '🌱' },
+  { minSales: 1000000, maxSales: 2000000, percentage: 6, levelName: 'Продавец', levelEmoji: '💼' },
+  { minSales: 2000000, maxSales: 2500000, percentage: 7, levelName: 'Опытный', levelEmoji: '⭐' },
+  { minSales: 2500000, maxSales: 3000000, percentage: 8, levelName: 'Мастер', levelEmoji: '🎯' },
+  { minSales: 3000000, maxSales: 3500000, percentage: 9, levelName: 'Профи', levelEmoji: '🔥' },
+  { minSales: 3500000, maxSales: 4000000, percentage: 10, levelName: 'Эксперт', levelEmoji: '💎' },
+  { minSales: 4000000, maxSales: 4500000, percentage: 11, levelName: 'Элита', levelEmoji: '👑' },
+  { minSales: 4500000, maxSales: 5000000, percentage: 12, levelName: 'Легенда', levelEmoji: '🏆' },
+  { minSales: 5000000, maxSales: 5500000, percentage: 13, levelName: 'Бог продаж', levelEmoji: '⚡' },
+];
 
 /**
- * Все роли (для будущего расширения)
+ * Все локации и должности
  */
-export const ALL_ROLES: Record<string, RoleConfig> = {
-  'online-manager': ONLINE_MANAGER_CONFIG,
-  // TODO: добавить другие роли
-  // 'store-seller': STORE_SELLER_CONFIG,
-  // 'senior-admin': SENIOR_ADMIN_CONFIG,
-  // 'director': DIRECTOR_CONFIG,
-};
+export const LOCATIONS: LocationConfig[] = [
+  {
+    id: 'online',
+    name: 'Онлайн',
+    emoji: '🌐',
+    roles: [
+      {
+        id: 'online-manager',
+        name: 'Онлайн-менеджер',
+        baseSalary: 50000,
+        maxMonthlySales: 5500000,
+        tiers: STANDARD_TIERS,
+      },
+      {
+        id: 'senior-online-manager',
+        name: 'Старший онлайн-менеджер',
+        baseSalary: 90000,
+        maxMonthlySales: 5500000,
+        tiers: STANDARD_TIERS,
+      },
+    ],
+  },
+  {
+    id: 'trc-moscow',
+    name: 'ТРЦ Москва',
+    emoji: '🏬',
+    roles: [
+      {
+        id: 'trc-seller',
+        name: 'Продавец-консультант',
+        baseSalary: 40000,
+        maxMonthlySales: 5500000,
+        tiers: STANDARD_TIERS,
+      },
+      {
+        id: 'trc-admin',
+        name: 'Админ-Кассир',
+        baseSalary: 80000,
+        maxMonthlySales: 5500000,
+        tiers: STANDARD_TIERS,
+      },
+    ],
+  },
+  {
+    id: 'td-tsum',
+    name: 'ТД ЦУМ',
+    emoji: '🏢',
+    roles: [
+      {
+        id: 'tsum-admin',
+        name: 'Админ-Кассир',
+        baseSalary: 80000,
+        maxMonthlySales: 5500000,
+        tiers: STANDARD_TIERS,
+      },
+    ],
+  },
+];
 
 /**
- * Получить конфиг роли по ID
+ * Получить конфиг роли по ID локации и роли
  */
-export function getRoleConfig(roleId: string): RoleConfig | undefined {
-  return ALL_ROLES[roleId];
+export function getRoleConfig(locationId: string, roleId: string): RoleConfig | undefined {
+  const location = LOCATIONS.find(l => l.id === locationId);
+  return location?.roles.find(r => r.id === roleId);
 }
+
+/**
+ * Дефолтный конфиг (для обратной совместимости)
+ */
+export const ONLINE_MANAGER_CONFIG = LOCATIONS[0].roles[0];

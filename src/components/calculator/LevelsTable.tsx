@@ -2,13 +2,17 @@
 
 import { memo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ONLINE_MANAGER_CONFIG } from "@/config/salary-scales"
+import { RoleConfig } from "@/config/salary-scales"
 import { formatMoney, formatMoneyShort, calculateSalary } from "@/lib/calculations"
 import { LevelIcon } from "./LevelIcon"
 import { TableProperties, Wallet } from "lucide-react"
 
-export const LevelsTable = memo(function LevelsTable() {
-  const { tiers, baseSalary } = ONLINE_MANAGER_CONFIG
+interface LevelsTableProps {
+  roleConfig: RoleConfig
+}
+
+export const LevelsTable = memo(function LevelsTable({ roleConfig }: LevelsTableProps) {
+  const { tiers, baseSalary } = roleConfig
 
   return (
     <div className="space-y-4">
@@ -44,7 +48,7 @@ export const LevelsTable = memo(function LevelsTable() {
           <div className="space-y-0.5 mt-2">
             {tiers.map((tier, index) => {
               // Calculate salary at tier max
-              const maxSalaryResult = calculateSalary(tier.maxSales, ONLINE_MANAGER_CONFIG)
+              const maxSalaryResult = calculateSalary(tier.maxSales, roleConfig)
 
               return (
                 <div

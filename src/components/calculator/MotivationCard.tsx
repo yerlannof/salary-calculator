@@ -3,16 +3,17 @@
 import { memo, useMemo } from "react"
 import { motion } from "framer-motion"
 import { SalaryCalculationResult, formatMoney, formatMoneyShort, calculateSalary } from "@/lib/calculations"
-import { ONLINE_MANAGER_CONFIG } from "@/config/salary-scales"
+import { RoleConfig } from "@/config/salary-scales"
 import { Card, CardContent } from "@/components/ui/card"
 import { LevelIcon } from "./LevelIcon"
 import { Trophy, TrendingUp, Target, Sparkles, ArrowRight, Calendar } from "lucide-react"
 
 interface MotivationCardProps {
   result: SalaryCalculationResult
+  roleConfig: RoleConfig
 }
 
-export const MotivationCard = memo(function MotivationCard({ result }: MotivationCardProps) {
+export const MotivationCard = memo(function MotivationCard({ result, roleConfig }: MotivationCardProps) {
   // Calculate daily target to reach next tier (assuming 22 working days)
   const dailyTarget = useMemo(() => {
     if (!result.nextTier || result.salesUntilNextTier <= 0) return 0
@@ -22,9 +23,9 @@ export const MotivationCard = memo(function MotivationCard({ result }: Motivatio
   // Calculate what salary would be at next tier threshold
   const salaryAtNextTierStart = useMemo(() => {
     if (!result.nextTier) return 0
-    const nextTierResult = calculateSalary(result.nextTier.minSales, ONLINE_MANAGER_CONFIG)
+    const nextTierResult = calculateSalary(result.nextTier.minSales, roleConfig)
     return nextTierResult.totalSalary
-  }, [result.nextTier])
+  }, [result.nextTier, roleConfig])
 
   // Progress percentage within current tier
   const progressToNext = result.currentTier && result.nextTier
