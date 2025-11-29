@@ -2,69 +2,69 @@
 
 import { memo } from "react"
 import {
-  Circle,
-  Crosshair,
-  Target,
-  Hexagon,
-  Diamond,
-  Flame,
-  Zap,
-  Crown,
+  Sprout,
+  Briefcase,
   Star,
+  Target,
+  Flame,
+  Gem,
+  Crown,
+  Trophy,
+  Zap,
   LucideIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-// CS2 Premier style rank configuration
+// Простая русская система рангов
 export const LEVEL_CONFIG: Record<string, {
   icon: LucideIcon
   color: string
   bg: string
   glow?: string
 }> = {
-  'Gray': {
-    icon: Circle,
-    color: 'text-gray-400',
-    bg: 'bg-gray-400/20'
+  'Новичок': {
+    icon: Sprout,
+    color: 'text-green-500',
+    bg: 'bg-green-500/20'
   },
-  'Cyan': {
-    icon: Crosshair,
-    color: 'text-cyan-400',
-    bg: 'bg-cyan-400/20'
-  },
-  'Blue': {
-    icon: Target,
+  'Продавец': {
+    icon: Briefcase,
     color: 'text-blue-500',
     bg: 'bg-blue-500/20'
   },
-  'Purple': {
-    icon: Hexagon,
-    color: 'text-purple-500',
-    bg: 'bg-purple-500/20'
+  'Опытный': {
+    icon: Star,
+    color: 'text-yellow-500',
+    bg: 'bg-yellow-500/20'
   },
-  'Pink': {
-    icon: Diamond,
-    color: 'text-pink-500',
-    bg: 'bg-pink-500/20'
+  'Мастер': {
+    icon: Target,
+    color: 'text-orange-500',
+    bg: 'bg-orange-500/20'
   },
-  'Red': {
+  'Профи': {
     icon: Flame,
     color: 'text-red-500',
     bg: 'bg-red-500/20'
   },
-  'Orange': {
-    icon: Zap,
-    color: 'text-orange-500',
-    bg: 'bg-orange-500/20'
+  'Эксперт': {
+    icon: Gem,
+    color: 'text-purple-500',
+    bg: 'bg-purple-500/20'
   },
-  'Gold': {
+  'Элита': {
     icon: Crown,
-    color: 'text-yellow-500',
-    bg: 'bg-yellow-500/20',
-    glow: 'drop-shadow-[0_0_6px_rgba(234,179,8,0.5)]'
+    color: 'text-amber-500',
+    bg: 'bg-amber-500/20'
   },
-  'Global': {
-    icon: Star,
+  'Легенда': {
+    icon: Trophy,
+    color: 'text-cyan-400',
+    bg: 'bg-cyan-400/20',
+    glow: 'drop-shadow-[0_0_6px_rgba(34,211,238,0.5)]'
+  },
+  'Бог продаж': {
+    icon: Zap,
     color: 'text-yellow-400',
     bg: 'bg-gradient-to-br from-yellow-500/30 to-orange-500/30',
     glow: 'drop-shadow-[0_0_10px_rgba(250,204,21,0.7)]'
@@ -82,7 +82,7 @@ export const LevelIcon = memo(function LevelIcon({
   size = 'md',
   className
 }: LevelIconProps) {
-  const config = LEVEL_CONFIG[levelName] || LEVEL_CONFIG['Gray']
+  const config = LEVEL_CONFIG[levelName] || LEVEL_CONFIG['Новичок']
   const Icon = config.icon
 
   const sizeClasses = {
@@ -104,7 +104,7 @@ export const LevelBadge = memo(function LevelBadge({
   levelName: string
   className?: string
 }) {
-  const config = LEVEL_CONFIG[levelName] || LEVEL_CONFIG['Gray']
+  const config = LEVEL_CONFIG[levelName] || LEVEL_CONFIG['Новичок']
   const Icon = config.icon
 
   return (
