@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { calculateSalary, formatMoney, formatMoneyShort } from '@/lib/calculations'
-import { LOCATIONS } from '@/config/salary-scales'
+import { formatMoney, formatMoneyShort } from '@/lib/calculations'
 import { LevelBadge, LEVEL_CONFIG } from '@/components/calculator/LevelIcon'
 import {
   Users,
@@ -23,53 +22,123 @@ import {
   Globe,
   Building2,
   ChevronRight,
-  Sparkles,
+  Download,
+  ArrowUp,
+  ArrowDown,
+  Minus,
+  RotateCcw,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { Podium } from '@/components/leaderboard/Podium'
+import { EmployeeCard } from '@/components/leaderboard/EmployeeCard'
+import { ACHIEVEMENT_ICONS } from '@/lib/achievements'
 
-interface Employee {
+interface AchievementBadge {
   id: string
+  code: string
   name: string
-  email: string | null
+  icon: string | null
 }
 
-interface EmployeeSales {
-  employee: Employee
+interface TeamEmployee {
+  id: string
+  moysklad_id: string
+  name: string
+  firstName: string
+  lastName: string
+  isActive: boolean
+  photoUrl: string | null
+  // Продажи
   totalSales: number
   salesCount: number
+  shiftCount?: number // Количество смен (уникальных дней)
+  // Возвраты
+  totalReturns: number
+  returnsCount: number
+  returnRate: number
+  // Чистые продажи
+  netSales: number
+  avgCheck: number
+  // ЗП и ранг
   salary: number
   rank: string
+  rankEmoji: string
   progress: number
   nextRank: string | null
   salesUntilNext: number
+  // Позиция
+  position: number
+  prevPosition: number | null
+  positionChange: number
+  // Streak и достижения
+  streak: number
+  maxStreak: number
+  achievements: AchievementBadge[]
+}
+
+interface TeamData {
+  employees: TeamEmployee[]
+  period: string
+  department: string
+  lastSync: {
+    at: string
+    status: string
+    recordsSynced: number
+  } | null
+  totals: {
+    sales: number
+    returns: number
+    netSales: number
+    fot: number
+    employees: number
+    avgReturnRate: number
+  }
 }
 
 const DEPARTMENTS = [
-  { id: 'moscow', name: 'ТРЦ Москва', icon: Store, color: 'text-orange-400', roleId: 'trc-seller', locationId: 'trc-moscow', baseSalary: 40000 },
-  { id: 'online', name: 'Онлайн', icon: Globe, color: 'text-blue-400', roleId: 'online-manager', locationId: 'online', baseSalary: 50000 },
-  { id: 'tsum', name: 'ТД ЦУМ', icon: Building2, color: 'text-purple-400', roleId: 'tsum-admin', locationId: 'td-tsum', baseSalary: 80000 },
+  { id: 'moscow', name: 'ТРЦ Москва', icon: Store, color: 'text-orange-400', baseSalary: 40000 },
+  { id: 'online', name: 'Онлайн', icon: Globe, color: 'text-blue-400', baseSalary: 50000 },
+  { id: 'tsum', name: 'ТД ЦУМ', icon: Building2, color: 'text-purple-400', baseSalary: 80000 },
+  { id: 'almaty', name: 'Алматы', icon: Store, color: 'text-emerald-400', baseSalary: 50000 },
+  { id: 'astana', name: 'Астана', icon: Store, color: 'text-cyan-400', baseSalary: 50000 },
 ]
 
-// Позиции в топе
 const POSITION_STYLES = {
   0: { bg: 'from-yellow-500/30 to-amber-500/20', border: 'border-yellow-500/50', icon: Crown, iconColor: 'text-yellow-400' },
   1: { bg: 'from-slate-400/30 to-slate-500/20', border: 'border-slate-400/50', icon: Medal, iconColor: 'text-slate-300' },
   2: { bg: 'from-orange-500/30 to-amber-600/20', border: 'border-orange-500/50', icon: Medal, iconColor: 'text-orange-400' },
 }
 
-// Функция для получения сотрудников
-async function fetchEmployees(departmentId: string): Promise<Employee[]> {
-  const response = await fetch(`/api/moysklad/employees?department=${departmentId}`)
-  const data = await response.json()
-  return data.employees || []
+// Получить данные команды из Supabase
+async function fetchTeamData(department: string, period: string): Promise<TeamData> {
+  const response = await fetch(`/api/team?department=${department}&period=${period}`)
+  if (!response.ok) throw new Error('Ошибка загрузки данных')
+  return response.json()
 }
 
-// Функция для получения продаж сотрудника
-async function fetchEmployeeSales(employeeId: string, period: string) {
-  const response = await fetch(`/api/moysklad/sales?employeeId=${employeeId}&period=${period}`)
-  return response.json()
+// Синхронизировать с МойСклад
+async function syncData(period: string) {
+  // Сначала сотрудников
+  await fetch('/api/sync/employees', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+  // Продажи и возвраты параллельно
+  const [salesRes, returnsRes] = await Promise.all([
+    fetch('/api/sync/sales', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ period })
+    }),
+    fetch('/api/sync/returns', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ period })
+    })
+  ])
+  return {
+    sales: await salesRes.json(),
+    returns: await returnsRes.json()
+  }
 }
 
 export default function TeamSalesPage() {
@@ -77,74 +146,31 @@ export default function TeamSalesPage() {
   const [department, setDepartment] = useState(DEPARTMENTS[0])
   const [period, setPeriod] = useState(() => {
     const now = new Date()
+    // По умолчанию показываем прошлый месяц если сегодня 1-5 число
+    if (now.getDate() <= 5) {
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      return `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`
+    }
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   })
+  const [syncing, setSyncing] = useState(false)
 
-  const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ['employees', department.id] })
-    queryClient.invalidateQueries({ queryKey: ['sales', department.id, period] })
-  }
-
-  const getRoleConfig = () => {
-    const location = LOCATIONS.find(l => l.id === department.locationId)
-    return location?.roles.find(r => r.id === department.roleId)
-  }
-
-  // Fetch employees с кэшированием (5 минут)
-  const { data: employees = [], isLoading: loadingEmployees } = useQuery({
-    queryKey: ['employees', department.id],
-    queryFn: () => fetchEmployees(department.id),
-    staleTime: 5 * 60 * 1000,
+  // Один запрос — все данные
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['team', department.id, period],
+    queryFn: () => fetchTeamData(department.id, period),
+    staleTime: 60 * 1000, // 1 минута
   })
 
-  // Fetch sales для всех сотрудников с кэшированием
-  const { data: salesData = [], isLoading: loadingSales } = useQuery({
-    queryKey: ['sales', department.id, period, employees.map(e => e.id).join(',')],
-    queryFn: async () => {
-      if (employees.length === 0) return []
-
-      const roleConfig = getRoleConfig()
-
-      const results = await Promise.all(
-        employees.map(async (emp) => {
-          const data = await fetchEmployeeSales(emp.id, period)
-
-          const salaryResult = roleConfig
-            ? calculateSalary(data.totalSales || 0, roleConfig)
-            : null
-
-          const currentTier = salaryResult?.currentTier
-          const nextTier = salaryResult?.nextTier
-
-          // Прогресс внутри текущего уровня
-          let progress = 0
-          if (currentTier) {
-            const tierSize = currentTier.maxSales - currentTier.minSales
-            const salesInTier = (data.totalSales || 0) - currentTier.minSales
-            progress = Math.min(100, Math.max(0, (salesInTier / tierSize) * 100))
-          }
-
-          return {
-            employee: emp,
-            totalSales: data.totalSales || 0,
-            salesCount: data.salesCount || 0,
-            salary: salaryResult?.totalSalary || 0,
-            rank: currentTier?.levelName || 'Новичок',
-            progress,
-            nextRank: nextTier?.levelName || null,
-            salesUntilNext: salaryResult?.salesUntilNextTier || 0,
-          }
-        })
-      )
-
-      return results.sort((a, b) => b.totalSales - a.totalSales)
-    },
-    enabled: employees.length > 0,
-    staleTime: 5 * 60 * 1000,
-  })
-
-  const totalSales = useMemo(() => salesData.reduce((sum, s) => sum + s.totalSales, 0), [salesData])
-  const totalFOT = useMemo(() => salesData.reduce((sum, s) => sum + s.salary, 0), [salesData])
+  const handleSync = async () => {
+    setSyncing(true)
+    try {
+      await syncData(period)
+      queryClient.invalidateQueries({ queryKey: ['team', department.id, period] })
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const formatPeriod = (p: string) => {
     const [year, month] = p.split('-')
@@ -152,72 +178,82 @@ export default function TeamSalesPage() {
     return date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
   }
 
-  const isLoading = loadingEmployees || loadingSales
+  const formatSyncTime = (isoString: string) => {
+    const date = new Date(isoString)
+    return date.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  }
+
+  const employees = data?.employees || []
+  const totals = data?.totals || { sales: 0, returns: 0, netSales: 0, fot: 0, employees: 0, avgReturnRate: 0 }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-background/95">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+      {/* Header - Gaming Style */}
+      <header className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/50">
         <div className="max-w-2xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Link href="/">
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <ArrowLeft className="w-5 h-5" />
+                <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-800/50">
+                  <ArrowLeft className="w-5 h-5 text-slate-400" />
                 </Button>
               </Link>
               <div>
-                <h1 className="text-lg font-bold flex items-center gap-2">
-                  <Trophy className="w-5 h-5 text-yellow-500" />
-                  Лидерборд
+                <h1 className="text-xl font-black flex items-center gap-2 tracking-tight">
+                  <div className="relative">
+                    <Trophy className="w-6 h-6 text-yellow-500 drop-shadow-[0_0_8px_rgba(234,179,8,0.6)]" />
+                  </div>
+                  <span className="bg-gradient-to-r from-yellow-200 via-yellow-400 to-amber-500 bg-clip-text text-transparent">
+                    ARENA
+                  </span>
                 </h1>
-                <p className="text-xs text-muted-foreground">{formatPeriod(period)}</p>
+                <p className="text-xs text-slate-500 font-medium">{formatPeriod(period)}</p>
               </div>
             </div>
             <Button
               variant="ghost"
               size="icon"
-              onClick={handleRefresh}
-              disabled={isLoading}
-              className="rounded-full"
+              onClick={handleSync}
+              disabled={syncing || isLoading}
+              className="rounded-full hover:bg-slate-800/50"
+              title="Синхронизировать с МойСклад"
             >
-              <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
+              <Download className={cn("w-4 h-4 text-slate-400", syncing && "animate-bounce text-emerald-400")} />
             </Button>
           </div>
         </div>
       </header>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
-        {/* Department Tabs */}
-        <div className="flex gap-2 p-1 bg-muted/50 rounded-xl">
+        {/* Department Tabs - Gaming Style */}
+        <div className="flex gap-2 p-1.5 bg-slate-900/80 rounded-xl border border-slate-800/50">
           {DEPARTMENTS.map((dept) => {
             const DeptIcon = dept.icon
+            const isActive = department.id === dept.id
             return (
-              <Button
+              <button
                 key={dept.id}
-                variant="ghost"
-                size="sm"
                 onClick={() => setDepartment(dept)}
                 className={cn(
-                  "flex-1 rounded-lg transition-all gap-2",
-                  department.id === dept.id
-                    ? "bg-background shadow-md"
-                    : "hover:bg-background/50"
+                  "flex-1 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 py-2.5 px-3 font-semibold text-sm",
+                  isActive
+                    ? "bg-gradient-to-br from-slate-700 to-slate-800 shadow-lg border border-slate-600/50 text-white"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                 )}
               >
-                <DeptIcon className={cn("w-4 h-4", dept.color)} />
+                <DeptIcon className={cn("w-4 h-4", isActive ? dept.color : "text-slate-500")} />
                 <span className="hidden sm:inline">{dept.name}</span>
-              </Button>
+              </button>
             )
           })}
         </div>
 
-        {/* Period Select */}
+        {/* Period Select - Gaming Style */}
         <div className="relative">
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            className="w-full px-4 py-3 text-sm bg-muted/30 border border-border/50 rounded-xl appearance-none cursor-pointer font-medium"
+            className="w-full px-4 py-3 text-sm bg-slate-900/80 border border-slate-800/50 rounded-xl appearance-none cursor-pointer font-semibold text-slate-200 focus:outline-none focus:border-slate-600"
           >
             {Array.from({ length: 12 }, (_, i) => {
               const date = new Date()
@@ -228,48 +264,82 @@ export default function TeamSalesPage() {
               )
             })}
           </select>
-          <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards - Gaming Style */}
         <div className="grid grid-cols-2 gap-3">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <Card className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border-emerald-500/30">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 text-emerald-400 mb-1">
-                  <TrendingUp className="w-4 h-4" />
-                  <span className="text-xs font-medium">Продажи</span>
+          <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }}>
+            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-900/50 via-emerald-800/30 to-emerald-900/20 border border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0" />
+              <div className="relative p-4">
+                <div className="flex items-center gap-2 text-emerald-400 mb-2">
+                  <div className="p-1.5 rounded-lg bg-emerald-500/20">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-semibold uppercase tracking-wide">Чистые продажи</span>
                 </div>
-                <p className="text-2xl font-bold">{formatMoneyShort(totalSales)}</p>
-                <p className="text-xs text-muted-foreground mt-1">{salesData.length} сотрудников</p>
-              </CardContent>
-            </Card>
+                <p className="text-3xl font-black text-white drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]">
+                  {formatMoneyShort(totals.netSales)}
+                </p>
+                <p className="text-xs text-emerald-300/70 mt-1">
+                  {totals.returns > 0 && (
+                    <span className="text-red-400">-{formatMoneyShort(totals.returns)} возвр.</span>
+                  )}
+                  {totals.returns === 0 && <span>{totals.employees} бойцов в строю</span>}
+                </p>
+              </div>
+            </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card className="bg-gradient-to-br from-violet-500/20 to-violet-600/10 border-violet-500/30">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 text-violet-400 mb-1">
-                  <Wallet className="w-4 h-4" />
-                  <span className="text-xs font-medium">ФОТ команды</span>
+          <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: 0.1 }}>
+            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-violet-900/50 via-violet-800/30 to-violet-900/20 border border-violet-500/40 shadow-[0_0_20px_rgba(139,92,246,0.15)]">
+              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0" />
+              <div className="relative p-4">
+                <div className="flex items-center gap-2 text-violet-400 mb-2">
+                  <div className="p-1.5 rounded-lg bg-violet-500/20">
+                    <Wallet className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-semibold uppercase tracking-wide">ФОТ команды</span>
                 </div>
-                <p className="text-2xl font-bold">{formatMoneyShort(totalFOT)}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {totalSales > 0 ? ((totalFOT / totalSales) * 100).toFixed(1) : 0}% от продаж
+                <p className="text-3xl font-black text-white drop-shadow-[0_0_10px_rgba(139,92,246,0.5)]">
+                  {formatMoneyShort(totals.fot)}
                 </p>
-              </CardContent>
-            </Card>
+                <p className="text-xs text-violet-300/70 mt-1">
+                  {totals.netSales > 0 ? ((totals.fot / totals.netSales) * 100).toFixed(1) : 0}% от добычи
+                </p>
+              </div>
+            </div>
           </motion.div>
         </div>
 
-        {/* Loading Skeletons */}
+        {/* Sync Status */}
+        {data?.lastSync && (
+          <p className="text-xs text-muted-foreground text-center">
+            Обновлено: {formatSyncTime(data.lastSync.at)} ({data.lastSync.recordsSynced} записей)
+          </p>
+        )}
+
+        {/* Podium Top-3 */}
+        {!isLoading && !error && employees.length >= 3 && (
+          <Podium
+            employees={employees.slice(0, 3).map(e => ({
+              id: e.id,
+              moysklad_id: e.moysklad_id,
+              name: e.name,
+              firstName: e.firstName,
+              lastName: e.lastName,
+              netSales: e.netSales,
+              salary: e.salary,
+              photoUrl: e.photoUrl,
+              streak: e.streak,
+            }))}
+            period={period}
+            department={department.id}
+          />
+        )}
+
+        {/* Loading */}
         {isLoading && (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
@@ -278,18 +348,10 @@ export default function TeamSalesPage() {
                   <div className="flex items-center gap-3">
                     <Skeleton className="w-10 h-10 rounded-full" />
                     <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-5 w-16 rounded-full" />
-                      </div>
+                      <Skeleton className="h-4 w-32" />
                       <Skeleton className="h-2 w-full rounded-full" />
-                      <Skeleton className="h-3 w-24" />
                     </div>
-                    <div className="text-right space-y-1">
-                      <Skeleton className="h-6 w-20 ml-auto" />
-                      <Skeleton className="h-4 w-16 ml-auto" />
-                      <Skeleton className="h-3 w-14 ml-auto" />
-                    </div>
+                    <Skeleton className="h-6 w-20" />
                   </div>
                 </CardContent>
               </Card>
@@ -297,120 +359,59 @@ export default function TeamSalesPage() {
           </div>
         )}
 
+        {/* Error */}
+        {error && (
+          <Card className="bg-red-500/10 border-red-500/30">
+            <CardContent className="py-8 text-center">
+              <p className="text-red-400">Ошибка загрузки. Попробуйте синхронизировать данные.</p>
+              <Button onClick={handleSync} variant="outline" className="mt-4">
+                <Download className="w-4 h-4 mr-2" />
+                Синхронизировать
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Leaderboard */}
-        {!isLoading && (
+        {!isLoading && !error && (
           <div className="space-y-3">
             <AnimatePresence>
-              {salesData.map((item, index) => {
-                const posStyle = POSITION_STYLES[index as keyof typeof POSITION_STYLES]
-                const levelConfig = LEVEL_CONFIG[item.rank]
-                const isTop3 = index < 3
-                const PositionIcon = posStyle?.icon || Target
-
-                return (
-                  <motion.div
-                    key={item.employee.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    layout
-                  >
-                    <Link href={`/team-sales/${item.employee.id}?period=${period}&dept=${department.id}`}>
-                      <Card className={cn(
-                        "overflow-hidden transition-all hover:scale-[1.02] cursor-pointer group",
-                        isTop3
-                          ? `bg-gradient-to-r ${posStyle.bg} ${posStyle.border} border`
-                          : "bg-card/50 border-border/50 hover:border-primary/30"
-                      )}>
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3">
-                            {/* Position */}
-                            <div className={cn(
-                              "w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg",
-                              isTop3 ? posStyle.bg : "bg-muted/50"
-                            )}>
-                              {isTop3 ? (
-                                <PositionIcon className={cn("w-5 h-5", posStyle?.iconColor)} />
-                              ) : (
-                                <span className="text-muted-foreground">#{index + 1}</span>
-                              )}
-                            </div>
-
-                            {/* Info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className="font-semibold truncate group-hover:text-primary transition-colors">{item.employee.name}</p>
-                                <LevelBadge levelName={item.rank} className="shrink-0" />
-                              </div>
-
-                              {/* Progress to next rank */}
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 h-2 bg-muted/50 rounded-full overflow-hidden">
-                                  <motion.div
-                                    className={cn("h-full rounded-full", levelConfig?.bg || "bg-primary")}
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${item.progress}%` }}
-                                    transition={{ duration: 0.5, delay: index * 0.05 }}
-                                    style={{
-                                      background: `linear-gradient(90deg, ${levelConfig?.color?.replace('text-', 'rgb(var(--') || 'hsl(var(--primary))'} 0%, transparent 200%)`
-                                    }}
-                                  />
-                                </div>
-                                <span className="text-xs text-muted-foreground w-8">{Math.round(item.progress)}%</span>
-                              </div>
-
-                              {item.nextRank && item.salesUntilNext > 0 && (
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  До {item.nextRank}: {formatMoneyShort(item.salesUntilNext)}
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Sales & Salary */}
-                            <div className="text-right">
-                              <p className="font-bold text-lg">{formatMoneyShort(item.totalSales)}</p>
-                              <p className="text-sm text-primary font-medium">{formatMoney(item.salary)}</p>
-                              <p className="text-xs text-muted-foreground">{item.salesCount} продаж</p>
-                            </div>
-
-                            {/* Arrow indicator */}
-                            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  </motion.div>
-                )
-              })}
+              {employees.map((item, index) => (
+                <EmployeeCard
+                  key={item.id}
+                  employee={item}
+                  index={index}
+                  period={period}
+                  departmentId={department.id}
+                />
+              ))}
             </AnimatePresence>
           </div>
         )}
 
         {/* Empty State */}
-        {!isLoading && salesData.length === 0 && (
+        {!isLoading && !error && employees.length === 0 && (
           <Card className="bg-muted/30">
             <CardContent className="py-12 text-center">
               <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Нет данных за этот период</p>
+              <p className="text-muted-foreground mb-4">Нет данных за этот период</p>
+              <Button onClick={handleSync} variant="outline">
+                <Download className="w-4 h-4 mr-2" />
+                Синхронизировать с МойСклад
+              </Button>
             </CardContent>
           </Card>
         )}
 
         {/* Role Info */}
-        {!isLoading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
+        {!isLoading && employees.length > 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
             <Card className="bg-muted/20 border-dashed">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Target className="w-4 h-4" />
                   <span>
-                    <strong>{department.name}</strong> •
-                    Оклад: {formatMoney(department.baseSalary)} •
-                    Шкала: 5% → 13%
+                    <strong>{department.name}</strong> • Оклад: {formatMoney(department.baseSalary)} • Шкала: 5% → 13%
                   </span>
                 </div>
               </CardContent>

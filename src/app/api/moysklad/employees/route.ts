@@ -15,6 +15,8 @@ const GROUPS = {
 interface MoySkladEmployee {
   id: string
   name: string
+  firstName?: string
+  lastName?: string
   email?: string
   phone?: string
   archived: boolean
@@ -89,7 +91,10 @@ export async function GET(request: NextRequest) {
       })
       .map((emp) => ({
         id: emp.id,
-        name: emp.name,
+        // Полное имя: Имя Фамилия (если есть), иначе name из МойСклад
+        name: emp.firstName && emp.lastName
+          ? `${emp.firstName} ${emp.lastName}`
+          : emp.name,
         email: emp.email || null,
         phone: emp.phone || null,
       }))

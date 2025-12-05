@@ -101,6 +101,34 @@ export const LOCATIONS: LocationConfig[] = [
       },
     ],
   },
+  {
+    id: 'almaty',
+    name: 'Алматы',
+    emoji: '🏔️',
+    roles: [
+      {
+        id: 'almaty-seller',
+        name: 'Продавец',
+        baseSalary: 50000,
+        maxMonthlySales: 5500000,
+        tiers: STANDARD_TIERS,
+      },
+    ],
+  },
+  {
+    id: 'astana',
+    name: 'Астана',
+    emoji: '🌆',
+    roles: [
+      {
+        id: 'astana-seller',
+        name: 'Продавец',
+        baseSalary: 50000,
+        maxMonthlySales: 5500000,
+        tiers: STANDARD_TIERS,
+      },
+    ],
+  },
 ];
 
 /**
