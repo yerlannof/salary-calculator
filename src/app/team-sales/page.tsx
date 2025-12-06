@@ -1,12 +1,14 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { formatMoney, formatMoneyShort } from '@/lib/calculations'
 import { LevelBadge, LEVEL_CONFIG } from '@/components/calculator/LevelIcon'
+import { getDepartmentStores } from '@/config/stores'
+import type { DepartmentType } from '@/lib/supabase/types'
 import {
   Users,
   TrendingUp,
@@ -27,6 +29,10 @@ import {
   ArrowDown,
   Minus,
   RotateCcw,
+  ShoppingBag,
+  Laptop,
+  Home,
+  X,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -98,9 +104,6 @@ interface TeamData {
 }
 
 const DEPARTMENTS = [
-  { id: 'moscow', name: 'ТРЦ Москва', icon: Store, color: 'text-orange-400', baseSalary: 40000 },
-  { id: 'online', name: 'Онлайн', icon: Globe, color: 'text-blue-400', baseSalary: 50000 },
-  { id: 'tsum', name: 'ТД ЦУМ', icon: Building2, color: 'text-purple-400', baseSalary: 80000 },
   { id: 'almaty', name: 'Алматы', icon: Store, color: 'text-emerald-400', baseSalary: 50000 },
   { id: 'astana', name: 'Астана', icon: Store, color: 'text-cyan-400', baseSalary: 50000 },
 ]
@@ -112,8 +115,11 @@ const POSITION_STYLES = {
 }
 
 // Получить данные команды из Supabase
-async function fetchTeamData(department: string, period: string): Promise<TeamData> {
-  const response = await fetch(`/api/team?department=${department}&period=${period}`)
+async function fetchTeamData(department: string, period: string, store?: string): Promise<TeamData> {
+  const url = store && store !== 'all'
+    ? `/api/team?department=${department}&period=${period}&store=${store}`
+    : `/api/team?department=${department}&period=${period}`
+  const response = await fetch(url)
   if (!response.ok) throw new Error('Ошибка загрузки данных')
   return response.json()
 }
@@ -141,9 +147,28 @@ async function syncData(period: string) {
   }
 }
 
+// Дефолтные магазины для каждого отдела
+const DEFAULT_STORES: Record<string, string> = {
+  almaty: 'b9585357-b51b-11ee-0a80-15c6000bc3b8', // ТРЦ Москва
+  astana: 'b75138dd-b6f8-11ee-0a80-09610016847f', // ТРЦ Аружан
+}
+
+// Иконки для магазинов
+const STORE_ICONS: Record<string, typeof Store> = {
+  'b9585357-b51b-11ee-0a80-15c6000bc3b8': Building2, // ТРЦ Москва
+  'b5a56c15-b162-11ee-0a80-02a00015a9f3': ShoppingBag, // ТД ЦУМ
+  '68d485c9-b131-11ee-0a80-066b000af5c1': Store, // Байтурсынова
+  'd1b4400d-007b-11ef-0a80-14800035ff62': Laptop, // Online New
+  'd491733b-b6f8-11ee-0a80-033a0016fb6b': Globe, // Онлайн Продажи (Legacy)
+  'b75138dd-b6f8-11ee-0a80-09610016847f': Home, // ТРЦ Аружан
+  'c341e43f-b6f8-11ee-0a80-103e0016edda': Store, // Астана Стрит
+  'a5ed2d1e-79bc-11f0-0a80-01e0001ceb81': Laptop, // Онлайн Астана
+}
+
 export default function TeamSalesPage() {
   const queryClient = useQueryClient()
   const [department, setDepartment] = useState(DEPARTMENTS[0])
+  const [selectedStore, setSelectedStore] = useState<string>(DEFAULT_STORES[DEPARTMENTS[0].id] || 'all')
   const [period, setPeriod] = useState(() => {
     const now = new Date()
     // По умолчанию показываем прошлый месяц если сегодня 1-5 число
@@ -154,11 +179,24 @@ export default function TeamSalesPage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   })
   const [syncing, setSyncing] = useState(false)
+  const [photoModalEmployee, setPhotoModalEmployee] = useState<{ moyskladId: string; name: string } | null>(null)
 
-  // Один запрос — все данные
+  // Сбрасываем выбор магазина при смене отдела на дефолтный
+  const handleDepartmentChange = (dept: typeof DEPARTMENTS[0]) => {
+    setDepartment(dept)
+    setSelectedStore(DEFAULT_STORES[dept.id] || 'all')
+  }
+
+  // Получаем список магазинов для текущего отдела
+  const departmentStores = useMemo(() =>
+    getDepartmentStores(department.id as DepartmentType),
+    [department.id]
+  )
+
+  // Один запрос — все данные (с фильтром по магазину)
   const { data, isLoading, error } = useQuery({
-    queryKey: ['team', department.id, period],
-    queryFn: () => fetchTeamData(department.id, period),
+    queryKey: ['team', department.id, period, selectedStore],
+    queryFn: () => fetchTeamData(department.id, period, selectedStore),
     staleTime: 60 * 1000, // 1 минута
   })
 
@@ -225,29 +263,6 @@ export default function TeamSalesPage() {
       </header>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
-        {/* Department Tabs - Gaming Style */}
-        <div className="flex gap-2 p-1.5 bg-slate-900/80 rounded-xl border border-slate-800/50">
-          {DEPARTMENTS.map((dept) => {
-            const DeptIcon = dept.icon
-            const isActive = department.id === dept.id
-            return (
-              <button
-                key={dept.id}
-                onClick={() => setDepartment(dept)}
-                className={cn(
-                  "flex-1 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 py-2.5 px-3 font-semibold text-sm",
-                  isActive
-                    ? "bg-gradient-to-br from-slate-700 to-slate-800 shadow-lg border border-slate-600/50 text-white"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                )}
-              >
-                <DeptIcon className={cn("w-4 h-4", isActive ? dept.color : "text-slate-500")} />
-                <span className="hidden sm:inline">{dept.name}</span>
-              </button>
-            )
-          })}
-        </div>
-
         {/* Period Select - Gaming Style */}
         <div className="relative">
           <select
@@ -266,6 +281,88 @@ export default function TeamSalesPage() {
           </select>
           <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
         </div>
+
+        {/* Department Tabs - Gaming Style */}
+        <div className="flex gap-2 p-1.5 bg-slate-900/80 rounded-xl border border-slate-800/50">
+          {DEPARTMENTS.map((dept) => {
+            const DeptIcon = dept.icon
+            const isActive = department.id === dept.id
+            return (
+              <button
+                key={dept.id}
+                onClick={() => handleDepartmentChange(dept)}
+                className={cn(
+                  "flex-1 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 py-2.5 px-3 font-semibold text-sm",
+                  isActive
+                    ? "bg-gradient-to-br from-slate-700 to-slate-800 shadow-lg border border-slate-600/50 text-white"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                )}
+              >
+                <DeptIcon className={cn("w-4 h-4", isActive ? dept.color : "text-slate-500")} />
+                <span className="hidden sm:inline">{dept.name}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Store Filter - Beautiful Buttons */}
+        {departmentStores.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-1">Магазины</p>
+            <div className="grid grid-cols-2 gap-2">
+              {departmentStores.map((store) => {
+                const StoreIcon = STORE_ICONS[store.id] || Store
+                const isActive = selectedStore === store.id
+                return (
+                  <motion.button
+                    key={store.id}
+                    onClick={() => setSelectedStore(store.id)}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={cn(
+                      "relative overflow-hidden rounded-lg p-3 transition-all duration-200 text-left",
+                      isActive
+                        ? "bg-gradient-to-br from-emerald-600/30 to-emerald-700/20 border-2 border-emerald-500/50 shadow-lg shadow-emerald-500/20"
+                        : "bg-slate-900/60 border border-slate-700/50 hover:border-slate-600/70 hover:bg-slate-800/60"
+                    )}
+                  >
+                    {/* Shine effect */}
+                    {isActive && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0" />
+                    )}
+
+                    <div className="relative flex items-center gap-2">
+                      <div className={cn(
+                        "p-2 rounded-lg transition-colors",
+                        isActive ? "bg-emerald-500/20" : "bg-slate-800/50"
+                      )}>
+                        <StoreIcon className={cn(
+                          "w-4 h-4",
+                          isActive ? "text-emerald-400" : "text-slate-400"
+                        )} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn(
+                          "text-sm font-semibold truncate",
+                          isActive ? "text-emerald-100" : "text-slate-200"
+                        )}>
+                          {store.name}
+                        </p>
+                      </div>
+                      {isActive && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="w-2 h-2 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/50"
+                        />
+                      )}
+                    </div>
+                  </motion.button>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Stats Cards - Gaming Style */}
         <div className="grid grid-cols-2 gap-3">
@@ -313,12 +410,6 @@ export default function TeamSalesPage() {
           </motion.div>
         </div>
 
-        {/* Sync Status */}
-        {data?.lastSync && (
-          <p className="text-xs text-muted-foreground text-center">
-            Обновлено: {formatSyncTime(data.lastSync.at)} ({data.lastSync.recordsSynced} записей)
-          </p>
-        )}
 
         {/* Podium Top-3 */}
         {!isLoading && !error && employees.length >= 3 && (
@@ -383,6 +474,7 @@ export default function TeamSalesPage() {
                   index={index}
                   period={period}
                   departmentId={department.id}
+                  onAvatarClick={() => setPhotoModalEmployee({ moyskladId: item.moysklad_id, name: item.name })}
                 />
               ))}
             </AnimatePresence>
@@ -418,6 +510,42 @@ export default function TeamSalesPage() {
             </Card>
           </motion.div>
         )}
+
+        {/* Photo Modal */}
+        <AnimatePresence>
+          {photoModalEmployee && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+              onClick={() => setPhotoModalEmployee(null)}
+            >
+              <button
+                onClick={() => setPhotoModalEmployee(null)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-slate-800/80 hover:bg-slate-700 transition-colors"
+              >
+                <X className="w-6 h-6 text-white" />
+              </button>
+              <motion.div
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.8 }}
+                className="relative max-w-4xl w-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <img
+                  src={`/api/photo/${photoModalEmployee.moyskladId}`}
+                  alt={photoModalEmployee.name}
+                  className="w-full h-auto rounded-lg shadow-2xl"
+                />
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6 rounded-b-lg">
+                  <h3 className="text-2xl font-bold text-white">{photoModalEmployee.name}</h3>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )

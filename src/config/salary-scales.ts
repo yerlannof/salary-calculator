@@ -143,3 +143,20 @@ export function getRoleConfig(locationId: string, roleId: string): RoleConfig | 
  * Дефолтный конфиг (для обратной совместимости)
  */
 export const ONLINE_MANAGER_CONFIG = LOCATIONS[0].roles[0];
+
+/**
+ * Маппинг отделов на конфиги ролей
+ *
+ * Определяет какая роль и оклад используется для расчета ЗП сотрудников каждого отдела.
+ * Используется в Team API и Employee API для единообразного расчета зарплат.
+ */
+import type { DepartmentType } from '@/lib/supabase/types'
+
+export const DEPARTMENT_ROLE_CONFIG: Record<DepartmentType, { locationId: string; roleId: string }> = {
+  almaty: { locationId: 'almaty', roleId: 'almaty-seller' },      // Оклад: 50,000 ₸ (Москва, ЦУМ, Байтурсынова, Online New)
+  astana: { locationId: 'astana', roleId: 'astana-seller' },      // Оклад: 50,000 ₸ (Аружан, Астана Стрит, Онлайн Астана)
+  // Старые отделы (сохраняем для совместимости со старыми данными)
+  moscow: { locationId: 'trc-moscow', roleId: 'trc-seller' },     // Оклад: 40,000 ₸ (deprecated)
+  tsum: { locationId: 'td-tsum', roleId: 'tsum-admin' },          // Оклад: 80,000 ₸ (deprecated)
+  online: { locationId: 'online', roleId: 'online-manager' },     // Оклад: 50,000 ₸ (deprecated)
+};

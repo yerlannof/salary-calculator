@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,6 +9,8 @@ import { Button } from '@/components/ui/button'
 import { formatMoney, formatMoneyShort } from '@/lib/calculations'
 import { LevelBadge } from '@/components/calculator/LevelIcon'
 import { ACHIEVEMENT_ICONS } from '@/lib/achievements'
+import { SalesByStore } from '@/components/leaderboard/SalesByStore'
+import { PeriodSelector, getCurrentPeriod } from '@/components/leaderboard/PeriodSelector'
 import {
   ArrowLeft,
   TrendingUp,
@@ -41,6 +44,9 @@ import {
 } from 'recharts'
 
 const DEPARTMENT_INFO: Record<string, { name: string; icon: typeof Store; color: string }> = {
+  almaty: { name: 'Алматы', icon: Store, color: 'text-emerald-400' },
+  astana: { name: 'Астана', icon: Store, color: 'text-cyan-400' },
+  // Старые отделы (для совместимости)
   moscow: { name: 'ТРЦ Москва', icon: Store, color: 'text-orange-400' },
   online: { name: 'Онлайн', icon: Globe, color: 'text-blue-400' },
   tsum: { name: 'ТД ЦУМ', icon: Building2, color: 'text-purple-400' },
@@ -98,6 +104,15 @@ interface EmployeeData {
     earnedIds: string[]
   }
   returns: Array<{ amount: number; date: string }>
+  salesByStore: Array<{
+    storeId: string
+    storeName: string
+    sales: number
+    salesCount: number
+    returns: number
+    returnsCount: number
+    netSales: number
+  }>
 }
 
 interface DailyData {
@@ -137,6 +152,7 @@ export default function EmployeeProfilePage({
   const searchParams = useSearchParams()
   const period = searchParams.get('period') || getCurrentPeriod()
   const dept = searchParams.get('dept') || 'moscow'
+  const [showPhotoModal, setShowPhotoModal] = useState(false)
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['employee', moyskladId, period],
@@ -186,20 +202,28 @@ export default function EmployeeProfilePage({
     <div className="min-h-screen bg-gradient-to-b from-background to-background/95">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
-        <div className="max-w-2xl mx-auto px-4 py-3">
+        <div className="max-w-2xl mx-auto px-4 py-3 space-y-3">
           <div className="flex items-center gap-3">
             <Link href={`/team-sales?dept=${employee.department}`}>
               <Button variant="ghost" size="icon" className="rounded-full">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
             </Link>
-            <div>
+            <div className="flex-1">
               <h1 className="text-lg font-bold">{employee.name}</h1>
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <DeptIcon className={cn('w-3 h-3', deptInfo.color)} />
-                {deptInfo.name} • {formatPeriod(period)}
+                {deptInfo.name}
               </p>
             </div>
+          </div>
+
+          {/* Period Selector */}
+          <div className="flex justify-center">
+            <PeriodSelector
+              currentPeriod={period}
+              basePath={`/team-sales/${moyskladId}`}
+            />
           </div>
         </div>
       </header>
@@ -213,11 +237,15 @@ export default function EmployeeProfilePage({
         >
           {/* Avatar */}
           <div className="relative">
-            <div className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-primary/20 ring-offset-2 ring-offset-background">
+            <button
+              onClick={() => setShowPhotoModal(true)}
+              className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-primary/20 ring-offset-2 ring-offset-background hover:ring-primary/40 transition-all cursor-pointer group"
+            >
               <img
                 src={`/api/photo/${moyskladId}`}
                 alt={employee.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover group-hover:scale-125 transition-transform duration-300"
+                style={{ objectPosition: 'center 35%', transform: 'scale(1.15)' }}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
                   target.style.display = 'none'
@@ -229,10 +257,10 @@ export default function EmployeeProfilePage({
               <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary/10 items-center justify-center text-primary text-3xl font-bold hidden">
                 {employee.firstName[0]}{employee.lastName[0]}
               </div>
-            </div>
+            </button>
             {/* Position badge */}
             {current.position > 0 && current.position <= 3 && (
-              <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-background border-2 border-yellow-500 flex items-center justify-center text-lg">
+              <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-background border-2 border-yellow-500 flex items-center justify-center text-lg pointer-events-none">
                 {current.position === 1 ? '🥇' : current.position === 2 ? '🥈' : '🥉'}
               </div>
             )}
@@ -265,10 +293,23 @@ export default function EmployeeProfilePage({
             iconColor="text-emerald-400"
           />
           <StatCard
+            icon={Calendar}
+            label="Смены"
+            value={dailyData?.stats.daysWithSales || 0}
+            suffix="дней"
+            iconColor="text-purple-400"
+          />
+          <StatCard
             icon={Target}
             label="Средний чек"
             value={formatMoneyShort(current.avgCheck)}
             iconColor="text-blue-400"
+          />
+          <StatCard
+            icon={TrendingUp}
+            label="За смену"
+            value={formatMoneyShort(dailyData?.stats.daysWithSales > 0 ? current.netSales / dailyData.stats.daysWithSales : 0)}
+            iconColor="text-cyan-400"
           />
           <StatCard
             icon={RotateCcw}
@@ -325,6 +366,11 @@ export default function EmployeeProfilePage({
             </div>
           </CardContent>
         </Card>
+
+        {/* Sales By Store */}
+        {data.salesByStore && data.salesByStore.length > 0 && (
+          <SalesByStore stores={data.salesByStore} />
+        )}
 
         {/* Daily Chart */}
         {dailyData && dailyData.daily.length > 0 && (
@@ -454,13 +500,44 @@ export default function EmployeeProfilePage({
           </Card>
         )}
       </div>
+
+      {/* Photo Modal */}
+      {showPhotoModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setShowPhotoModal(false)}
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-4xl w-full"
+          >
+            <Button
+              onClick={() => setShowPhotoModal(false)}
+              variant="ghost"
+              size="icon"
+              className="absolute -top-12 right-0 text-white hover:bg-white/20"
+            >
+              <span className="text-2xl">×</span>
+            </Button>
+            <img
+              src={`/api/photo/${moyskladId}`}
+              alt={employee.name}
+              className="w-full h-auto rounded-lg shadow-2xl"
+            />
+            <p className="text-white text-center mt-4 text-lg font-semibold">
+              {employee.name}
+            </p>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   )
-}
-
-function getCurrentPeriod() {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 }
 
 function StatCard({

@@ -1,22 +1,11 @@
 import { NextResponse } from 'next/server'
 import { NextRequest } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { RETAIL_STORES } from '@/config/stores'
 import type { DepartmentType } from '@/lib/supabase/types'
 
 const MOYSKLAD_API_URL = 'https://api.moysklad.ru/api/remap/1.2'
 const MOYSKLAD_TOKEN = process.env.MOYSKLAD_TOKEN
-
-// Точки продаж → отделы
-const RETAIL_STORES: Record<string, { name: string; department: DepartmentType }> = {
-  'b9585357-b51b-11ee-0a80-15c6000bc3b8': { name: 'Москва', department: 'moscow' },
-  'b5a56c15-b162-11ee-0a80-02a00015a9f3': { name: 'ЦУМ', department: 'tsum' },
-  'd491733b-b6f8-11ee-0a80-033a0016fb6b': { name: 'Онлайн Продажи', department: 'online' },
-  'd1b4400d-007b-11ef-0a80-14800035ff62': { name: 'Online New', department: 'online' },
-  'a5ed2d1e-79bc-11f0-0a80-01e0001ceb81': { name: 'Онлайн Астана', department: 'online' },
-  '68d485c9-b131-11ee-0a80-066b000af5c1': { name: 'Байтурсынова', department: 'almaty' },
-  'b75138dd-b6f8-11ee-0a80-09610016847f': { name: 'Аружан', department: 'astana' },
-  'c341e43f-b6f8-11ee-0a80-103e0016edda': { name: 'Ауэзова', department: 'astana' },
-}
 
 interface MoySkladReturn {
   id: string

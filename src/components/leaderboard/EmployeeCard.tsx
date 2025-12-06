@@ -48,6 +48,7 @@ interface EmployeeCardProps {
   index: number
   period: string
   departmentId: string
+  onAvatarClick?: () => void
 }
 
 const RANK_STYLES = {
@@ -80,7 +81,7 @@ const RANK_STYLES = {
   },
 }
 
-export function EmployeeCard({ employee, index, period, departmentId }: EmployeeCardProps) {
+export function EmployeeCard({ employee, index, period, departmentId, onAvatarClick }: EmployeeCardProps) {
   const isTop3 = index < 3
   const rankStyle = RANK_STYLES[employee.position as keyof typeof RANK_STYLES]
   const levelConfig = LEVEL_CONFIG[employee.rank]
@@ -112,19 +113,25 @@ export function EmployeeCard({ employee, index, period, departmentId }: Employee
             <div className="flex items-center gap-4">
               {/* Position & Avatar */}
               <div className="relative">
-                {/* Avatar with glow */}
-                <div
+                {/* Avatar with glow - clickable */}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onAvatarClick?.()
+                  }}
                   className={cn(
-                    'w-14 h-14 rounded-full overflow-hidden transition-transform duration-300 group-hover:scale-110',
+                    'w-14 h-14 rounded-full overflow-hidden transition-all duration-300 hover:scale-110 cursor-pointer',
                     isTop3
-                      ? `ring-2 ring-offset-2 ring-offset-background ${rankStyle.ring} shadow-lg`
-                      : 'ring-1 ring-slate-600'
+                      ? `ring-2 ring-offset-2 ring-offset-background ${rankStyle.ring} shadow-lg hover:ring-4`
+                      : 'ring-1 ring-slate-600 hover:ring-2 hover:ring-slate-500'
                   )}
                 >
                   <img
                     src={`/api/photo/${employee.moysklad_id}`}
                     alt={employee.name}
                     className="w-full h-full object-cover"
+                    style={{ objectPosition: 'center 35%', transform: 'scale(1.15)' }}
                     onError={(e) => {
                       const target = e.target as HTMLImageElement
                       target.style.display = 'none'
@@ -136,7 +143,7 @@ export function EmployeeCard({ employee, index, period, departmentId }: Employee
                   <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 items-center justify-center text-slate-300 font-bold hidden">
                     {initials}
                   </div>
-                </div>
+                </button>
 
                 {/* Position Badge */}
                 <div
@@ -279,12 +286,12 @@ export function EmployeeCard({ employee, index, period, departmentId }: Employee
                 </p>
                 <div className="flex items-center justify-end gap-1 text-xs text-slate-500 mt-0.5">
                   <Swords className="w-3 h-3" />
-                  <span>{employee.salesCount}</span>
-                  {employee.shiftCount && (
-                    <span className="text-slate-400">• {employee.shiftCount} см</span>
+                  <span title="Количество чеков">{employee.salesCount}</span>
+                  {employee.shiftCount && employee.shiftCount > 0 && (
+                    <span className="text-slate-400" title="Количество смен">• {employee.shiftCount} смен</span>
                   )}
                   {employee.returnsCount > 0 && (
-                    <span className="text-red-400">• -{employee.returnsCount}</span>
+                    <span className="text-red-400" title="Количество возвратов">• -{employee.returnsCount}</span>
                   )}
                 </div>
               </div>

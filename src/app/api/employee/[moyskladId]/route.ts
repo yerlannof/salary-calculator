@@ -2,34 +2,10 @@ import { NextResponse } from 'next/server'
 import { NextRequest } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { calculateSalary } from '@/lib/calculations'
-import { LOCATIONS } from '@/config/salary-scales'
+import { LOCATIONS, DEPARTMENT_ROLE_CONFIG } from '@/config/salary-scales'
+import { DEPARTMENT_STORE_IDS, RETAIL_STORES } from '@/config/stores'
 import { calculateStreak } from '@/lib/streak'
 import type { DepartmentType, Employee, Sale, Return, Achievement, EmployeeAchievement, MonthlyRanking } from '@/lib/supabase/types'
-
-// Маппинг отделов на конфиги ролей
-const DEPARTMENT_ROLE_CONFIG: Record<DepartmentType, { locationId: string; roleId: string }> = {
-  moscow: { locationId: 'trc-moscow', roleId: 'trc-seller' },
-  online: { locationId: 'online', roleId: 'online-manager' },
-  tsum: { locationId: 'td-tsum', roleId: 'tsum-admin' },
-  almaty: { locationId: 'almaty', roleId: 'almaty-seller' },
-  astana: { locationId: 'astana', roleId: 'astana-seller' },
-}
-
-// Маппинг отделов на retail store IDs (должен совпадать с team API!)
-const DEPARTMENT_STORE_IDS: Record<DepartmentType, string[]> = {
-  moscow: ['b9585357-b51b-11ee-0a80-15c6000bc3b8'],
-  tsum: ['b5a56c15-b162-11ee-0a80-02a00015a9f3'],
-  online: [
-    'd491733b-b6f8-11ee-0a80-033a0016fb6b',
-    'd1b4400d-007b-11ef-0a80-14800035ff62',
-    'a5ed2d1e-79bc-11f0-0a80-01e0001ceb81'
-  ],
-  almaty: ['68d485c9-b131-11ee-0a80-066b000af5c1'], // Байтурсынова
-  astana: [
-    'b75138dd-b6f8-11ee-0a80-09610016847f', // Аружан
-    'c341e43f-b6f8-11ee-0a80-103e0016edda'  // Ауэзова (Астана Стрит)
-  ],
-}
 
 /**
  * GET /api/employee/[moyskladId]
@@ -75,8 +51,8 @@ export async function GET(
     const prevStartDate = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`
     const prevEndDate = startDate
 
-    type SaleWithDate = Pick<Sale, 'amount' | 'sale_date'>
-    type ReturnWithDate = Pick<Return, 'amount' | 'return_date'>
+    type SaleWithDate = Pick<Sale, 'amount' | 'sale_date' | 'retail_store_id' | 'retail_store_name'>
+    type ReturnWithDate = Pick<Return, 'amount' | 'return_date' | 'retail_store_id'>
     type ReturnAmount = Pick<Return, 'amount'>
 
     // Store IDs "домашнего" отдела сотрудника (для расчёта позиции в рейтинге)
@@ -88,10 +64,10 @@ export async function GET(
     // Это даёт полную картину работы сотрудника если он работает на нескольких точках
     // ========================================================================
 
-    // Получаем продажи за текущий период (ВСЕ магазины)
+    // Получаем продажи за текущий период (ВСЕ магазины) С ИНФОРМАЦИЕЙ О МАГАЗИНЕ
     const { data: currentSalesData } = await supabaseAdmin
       .from('sales')
-      .select('amount, sale_date')
+      .select('amount, sale_date, retail_store_id, retail_store_name')
       .eq('moysklad_employee_id', moyskladId)
       .gte('sale_date', startDate)
       .lt('sale_date', endDate)
@@ -100,16 +76,16 @@ export async function GET(
     // Получаем продажи за прошлый период (ВСЕ магазины)
     const { data: prevSalesData } = await supabaseAdmin
       .from('sales')
-      .select('amount, sale_date')
+      .select('amount, sale_date, retail_store_id, retail_store_name')
       .eq('moysklad_employee_id', moyskladId)
       .gte('sale_date', prevStartDate)
       .lt('sale_date', prevEndDate)
     const prevSales = prevSalesData as SaleWithDate[] | null
 
-    // Получаем возвраты за текущий период (ВСЕ магазины)
+    // Получаем возвраты за текущий период (ВСЕ магазины) С ИНФОРМАЦИЕЙ О МАГАЗИНЕ
     const { data: currentReturnsData } = await supabaseAdmin
       .from('returns')
-      .select('amount, return_date')
+      .select('amount, return_date, retail_store_id')
       .eq('moysklad_employee_id', moyskladId)
       .gte('return_date', startDate)
       .lt('return_date', endDate)
@@ -148,6 +124,9 @@ export async function GET(
     // Рассчитываем статистику текущего периода
     const currentStats = calculatePeriodStats(currentSales || [], currentReturns || [])
     const prevStats = calculatePeriodStats(prevSales || [], prevReturns || [])
+
+    // Группируем продажи по магазинам
+    const salesByStore = groupByStore(currentSales || [], currentReturns || [])
 
     // Streak
     const streak = calculateStreak(
@@ -279,6 +258,7 @@ export async function GET(
         amount: Number(r.amount),
         date: r.return_date,
       })),
+      salesByStore, // Разбивка по магазинам
     })
 
   } catch (error) {
@@ -311,4 +291,70 @@ function calculatePeriodStats(
     avgCheck: Math.round(avgCheck),
     returnRate: Math.round(returnRate * 10) / 10,
   }
+}
+
+/**
+ * Группирует продажи и возвраты по магазинам
+ */
+function groupByStore(
+  sales: Array<{ amount: number; retail_store_id: string; retail_store_name?: string | null }>,
+  returns: Array<{ amount: number; retail_store_id: string }>
+) {
+  const storeMap: Record<string, {
+    storeId: string
+    storeName: string
+    sales: number
+    salesCount: number
+    returns: number
+    returnsCount: number
+    netSales: number
+  }> = {}
+
+  // Группируем продажи
+  sales.forEach(sale => {
+    const storeId = sale.retail_store_id
+    if (!storeMap[storeId]) {
+      const storeInfo = RETAIL_STORES[storeId]
+      storeMap[storeId] = {
+        storeId,
+        storeName: storeInfo?.name || sale.retail_store_name || storeId,
+        sales: 0,
+        salesCount: 0,
+        returns: 0,
+        returnsCount: 0,
+        netSales: 0,
+      }
+    }
+    storeMap[storeId].sales += Number(sale.amount)
+    storeMap[storeId].salesCount++
+  })
+
+  // Группируем возвраты
+  returns.forEach(ret => {
+    const storeId = ret.retail_store_id
+    if (!storeMap[storeId]) {
+      const storeInfo = RETAIL_STORES[storeId]
+      storeMap[storeId] = {
+        storeId,
+        storeName: storeInfo?.name || storeId,
+        sales: 0,
+        salesCount: 0,
+        returns: 0,
+        returnsCount: 0,
+        netSales: 0,
+      }
+    }
+    storeMap[storeId].returns += Number(ret.amount)
+    storeMap[storeId].returnsCount++
+  })
+
+  // Вычисляем netSales для каждого магазина
+  Object.values(storeMap).forEach(store => {
+    store.netSales = store.sales - store.returns
+  })
+
+  // Сортируем по объему продаж (больше → первый)
+  const stores = Object.values(storeMap).sort((a, b) => b.sales - a.sales)
+
+  return stores
 }

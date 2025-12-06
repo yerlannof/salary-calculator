@@ -2,40 +2,17 @@ import { NextResponse } from 'next/server'
 import { NextRequest } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { calculateSalary } from '@/lib/calculations'
-import { LOCATIONS } from '@/config/salary-scales'
+import { LOCATIONS, DEPARTMENT_ROLE_CONFIG } from '@/config/salary-scales'
+import { DEPARTMENT_STORE_IDS } from '@/config/stores'
 import { calculateStreak } from '@/lib/streak'
 import type { DepartmentType, Employee, Sale, Return, MonthlyRanking, EmployeeAchievement, SyncLog } from '@/lib/supabase/types'
-
-// Маппинг отделов на конфиги ролей
-const DEPARTMENT_ROLE_CONFIG: Record<DepartmentType, { locationId: string; roleId: string }> = {
-  moscow: { locationId: 'trc-moscow', roleId: 'trc-seller' },
-  online: { locationId: 'online', roleId: 'online-manager' },
-  tsum: { locationId: 'td-tsum', roleId: 'tsum-admin' },
-  almaty: { locationId: 'almaty', roleId: 'almaty-seller' },
-  astana: { locationId: 'astana', roleId: 'astana-seller' },
-}
-
-// Маппинг отделов на retail store IDs
-const DEPARTMENT_STORE_IDS: Record<DepartmentType, string[]> = {
-  moscow: ['b9585357-b51b-11ee-0a80-15c6000bc3b8'],
-  tsum: ['b5a56c15-b162-11ee-0a80-02a00015a9f3'],
-  online: [
-    'd491733b-b6f8-11ee-0a80-033a0016fb6b',
-    'd1b4400d-007b-11ef-0a80-14800035ff62',
-    'a5ed2d1e-79bc-11f0-0a80-01e0001ceb81'
-  ],
-  almaty: ['68d485c9-b131-11ee-0a80-066b000af5c1'], // Байтурсынова
-  astana: [
-    'b75138dd-b6f8-11ee-0a80-09610016847f', // Аружан
-    'c341e43f-b6f8-11ee-0a80-103e0016edda'  // Ауэзова (Астана Стрит)
-  ],
-}
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const department = searchParams.get('department') as DepartmentType | null
     const period = searchParams.get('period') // YYYY-MM
+    const store = searchParams.get('store') // optional: specific store ID
 
     if (!department || !period) {
       return NextResponse.json(
@@ -70,8 +47,8 @@ export async function GET(request: NextRequest) {
     // ========================================================================
 
     type SaleForTeam = Pick<Sale, 'moysklad_employee_id' | 'amount' | 'sale_date'>
-    // 1. Получаем продажи за период (фильтруем по магазинам отдела)
-    const storeIds = DEPARTMENT_STORE_IDS[department]
+    // 1. Получаем продажи за период (фильтруем по магазинам отдела или конкретному магазину)
+    const storeIds = store && store !== 'all' ? [store] : DEPARTMENT_STORE_IDS[department]
     const { data: salesData, error: salesError } = await supabaseAdmin
       .from('sales')
       .select('moysklad_employee_id, amount, sale_date', { count: 'exact' })
@@ -120,7 +97,7 @@ export async function GET(request: NextRequest) {
 
     const achievements = achievementsData as EmpAchWithJoin[] | null
 
-    // Получаем возвраты за период (фильтруем по магазинам отдела)
+    // Получаем возвраты за период (фильтруем по тем же магазинам что и продажи)
     type ReturnForTeam = Pick<Return, 'moysklad_employee_id' | 'amount'>
     const { data: returnsRaw, error: returnsError } = await supabaseAdmin
       .from('returns')
