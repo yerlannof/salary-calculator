@@ -233,7 +233,7 @@ async function calculateAndSaveRankings(period: string): Promise<{ success: bool
     const returns = returnsData as ReturnRow[] | null
 
     // 3. Собираем уникальные moysklad_id сотрудников из продаж
-    const uniqueEmployeeMoyskladIds = [...new Set((sales || []).map(s => s.moysklad_employee_id))]
+    const uniqueEmployeeMoyskladIds = Array.from(new Set((sales || []).map(s => s.moysklad_employee_id)))
 
     if (uniqueEmployeeMoyskladIds.length === 0) {
       results[dept] = { count: 0 }

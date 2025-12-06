@@ -297,8 +297,8 @@ function calculatePeriodStats(
  * Группирует продажи и возвраты по магазинам
  */
 function groupByStore(
-  sales: Array<{ amount: number; retail_store_id: string; retail_store_name?: string | null }>,
-  returns: Array<{ amount: number; retail_store_id: string }>
+  sales: Array<{ amount: number; retail_store_id: string | null; retail_store_name?: string | null }>,
+  returns: Array<{ amount: number; retail_store_id: string | null }>
 ) {
   const storeMap: Record<string, {
     storeId: string
@@ -312,7 +312,7 @@ function groupByStore(
 
   // Группируем продажи
   sales.forEach(sale => {
-    const storeId = sale.retail_store_id
+    const storeId = sale.retail_store_id || 'unknown'
     if (!storeMap[storeId]) {
       const storeInfo = RETAIL_STORES[storeId]
       storeMap[storeId] = {
@@ -331,7 +331,7 @@ function groupByStore(
 
   // Группируем возвраты
   returns.forEach(ret => {
-    const storeId = ret.retail_store_id
+    const storeId = ret.retail_store_id || 'unknown'
     if (!storeMap[storeId]) {
       const storeInfo = RETAIL_STORES[storeId]
       storeMap[storeId] = {

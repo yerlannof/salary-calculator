@@ -308,7 +308,7 @@ export default function EmployeeProfilePage({
           <StatCard
             icon={TrendingUp}
             label="За смену"
-            value={formatMoneyShort(dailyData?.stats.daysWithSales > 0 ? current.netSales / dailyData.stats.daysWithSales : 0)}
+            value={formatMoneyShort((dailyData?.stats?.daysWithSales ?? 0) > 0 ? current.netSales / (dailyData?.stats?.daysWithSales ?? 1) : 0)}
             iconColor="text-cyan-400"
           />
           <StatCard

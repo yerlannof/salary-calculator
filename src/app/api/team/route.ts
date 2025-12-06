@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. Собираем уникальные moysklad_id сотрудников из продаж
-    const uniqueEmployeeMoyskladIds = [...new Set((sales || []).map(s => s.moysklad_employee_id))]
+    const uniqueEmployeeMoyskladIds = Array.from(new Set((sales || []).map(s => s.moysklad_employee_id)))
 
     // 3. Получаем данные ВСЕХ сотрудников кто продавал в этих магазинах
     // (независимо от их "домашнего" отдела!)
