@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { calculateSalary } from '@/lib/calculations'
 import { LOCATIONS, DEPARTMENT_ROLE_CONFIG } from '@/config/salary-scales'
-import { DEPARTMENT_STORE_IDS } from '@/config/stores'
+import { DEPARTMENT_STORE_IDS, RETAIL_STORES } from '@/config/stores'
 import { calculateStreak } from '@/lib/streak'
 import type { DepartmentType, Employee, Sale, Return, MonthlyRanking, EmployeeAchievement, SyncLog } from '@/lib/supabase/types'
 
@@ -46,23 +46,42 @@ export async function GET(request: NextRequest) {
     // 3. Это позволяет видеть продажи Ибрагимова в Online, даже если он в TSUM
     // ========================================================================
 
-    type SaleForTeam = Pick<Sale, 'moysklad_employee_id' | 'amount' | 'sale_date'>
+    type SaleForTeam = Pick<Sale, 'moysklad_employee_id' | 'amount' | 'sale_date'> & { retail_store_id: string }
     // 1. Получаем продажи за период (фильтруем по магазинам отдела или конкретному магазину)
     const storeIds = store && store !== 'all' ? [store] : DEPARTMENT_STORE_IDS[department]
-    const { data: salesData, error: salesError } = await supabaseAdmin
-      .from('sales')
-      .select('moysklad_employee_id, amount, sale_date', { count: 'exact' })
-      .gte('sale_date', startDate)
-      .lt('sale_date', endDate)
-      .in('retail_store_id', storeIds)
-      .limit(10000)
+    const isAllStores = store === 'all'
+    // ВАЖНО: Supabase имеет серверный лимит 1000 строк по умолчанию
+    // .limit() не помогает, используем пагинацию для получения всех данных
+    let allSales: SaleForTeam[] = []
+    let offset = 0
+    const pageSize = 1000
 
-    const sales = salesData as SaleForTeam[] | null
+    while (true) {
+      // ВАЖНО: .order() нужен для стабильной пагинации
+      // ВАЖНО: { count: 'exact' } нужен для корректного получения всех данных (баг Supabase?)
+      const { data: salesPage, error: salesError } = await supabaseAdmin
+        .from('sales')
+        .select('moysklad_employee_id, amount, sale_date, retail_store_id', { count: 'exact' })
+        .gte('sale_date', startDate)
+        .lt('sale_date', endDate)
+        .in('retail_store_id', storeIds)
+        .order('id')
+        .range(offset, offset + pageSize - 1)
 
-    if (salesError) {
-      console.error('Error fetching sales:', salesError)
-      return NextResponse.json({ error: 'Ошибка загрузки продаж' }, { status: 500 })
+      if (salesError) {
+        console.error('Error fetching sales:', salesError)
+        return NextResponse.json({ error: 'Ошибка загрузки продаж' }, { status: 500 })
+      }
+
+      if (!salesPage || salesPage.length === 0) break
+
+      allSales = allSales.concat(salesPage as SaleForTeam[])
+
+      if (salesPage.length < pageSize) break // Последняя страница
+      offset += pageSize
     }
+
+    const sales = allSales
 
     // 2. Собираем уникальные moysklad_id сотрудников из продаж
     const uniqueEmployeeMoyskladIds = Array.from(new Set((sales || []).map(s => s.moysklad_employee_id)))
@@ -98,17 +117,32 @@ export async function GET(request: NextRequest) {
     const achievements = achievementsData as EmpAchWithJoin[] | null
 
     // Получаем возвраты за период (фильтруем по тем же магазинам что и продажи)
+    // Используем пагинацию как и для продаж
     type ReturnForTeam = Pick<Return, 'moysklad_employee_id' | 'amount'>
-    const { data: returnsRaw, error: returnsError } = await supabaseAdmin
-      .from('returns')
-      .select('moysklad_employee_id, amount', { count: 'exact' })
-      .gte('return_date', startDate)
-      .lt('return_date', endDate)
-      .in('retail_store_id', storeIds)
-      .limit(10000)
+    let returnsData: ReturnForTeam[] = []
+    let returnsOffset = 0
 
-    // Если таблица returns ещё не создана, игнорируем ошибку
-    const returnsData: ReturnForTeam[] = returnsError ? [] : ((returnsRaw as ReturnForTeam[] | null) || [])
+    while (true) {
+      // ВАЖНО: { count: 'exact' } нужен для корректного получения всех данных (баг Supabase?)
+      const { data: returnsPage, error: returnsError } = await supabaseAdmin
+        .from('returns')
+        .select('moysklad_employee_id, amount', { count: 'exact' })
+        .gte('return_date', startDate)
+        .lt('return_date', endDate)
+        .in('retail_store_id', storeIds)
+        .order('id')
+        .range(returnsOffset, returnsOffset + pageSize - 1)
+
+      // Если таблица returns ещё не создана, игнорируем ошибку
+      if (returnsError) break
+
+      if (!returnsPage || returnsPage.length === 0) break
+
+      returnsData = returnsData.concat(returnsPage as ReturnForTeam[])
+
+      if (returnsPage.length < pageSize) break
+      returnsOffset += pageSize
+    }
 
     // Получаем рейтинги прошлого месяца для сравнения
     type RankingEntry = Pick<MonthlyRanking, 'employee_id' | 'rank'>
@@ -125,15 +159,16 @@ export async function GET(request: NextRequest) {
       prevRankMap[r.employee_id] = r.rank
     }
 
-    // Группируем продажи по сотруднику (с датами для streak)
-    const salesByEmployee: Record<string, { total: number; count: number; dates: string[] }> = {}
+    // Группируем продажи по сотруднику (с датами для streak и магазинами)
+    const salesByEmployee: Record<string, { total: number; count: number; dates: string[]; storeIds: Set<string> }> = {}
     for (const sale of sales || []) {
       if (!salesByEmployee[sale.moysklad_employee_id]) {
-        salesByEmployee[sale.moysklad_employee_id] = { total: 0, count: 0, dates: [] }
+        salesByEmployee[sale.moysklad_employee_id] = { total: 0, count: 0, dates: [], storeIds: new Set() }
       }
       salesByEmployee[sale.moysklad_employee_id].total += Number(sale.amount)
       salesByEmployee[sale.moysklad_employee_id].count++
       salesByEmployee[sale.moysklad_employee_id].dates.push(sale.sale_date)
+      salesByEmployee[sale.moysklad_employee_id].storeIds.add(sale.retail_store_id)
     }
 
     // Группируем достижения по сотрудникам
@@ -164,7 +199,7 @@ export async function GET(request: NextRequest) {
 
     // Формируем результат
     const result = employees.map(emp => {
-      const empSales = salesByEmployee[emp.moysklad_id] || { total: 0, count: 0, dates: [] }
+      const empSales = salesByEmployee[emp.moysklad_id] || { total: 0, count: 0, dates: [], storeIds: new Set<string>() }
       const empReturns = returnsByEmployee[emp.moysklad_id] || { total: 0, count: 0 }
       const empAchievements = achievementsByEmployee[emp.id] || []
       const empStreak = calculateStreak(empSales.dates, streakReferenceDate)
@@ -229,6 +264,11 @@ export async function GET(request: NextRequest) {
         streak: empStreak.currentStreak,
         maxStreak: empStreak.maxStreak,
         achievements: empAchievements,
+        // Магазины где продавал (для режима "Все магазины")
+        stores: isAllStores ? Array.from(empSales.storeIds).map(id => ({
+          id,
+          name: RETAIL_STORES[id]?.name || 'Неизвестный магазин'
+        })) : [],
       }
     })
 
