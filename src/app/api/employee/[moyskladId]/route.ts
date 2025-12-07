@@ -226,6 +226,15 @@ export async function GET(
         salary: currentSalaryResult?.totalSalary || 0,
         rank: currentSalaryResult?.currentTier?.levelName || 'Новичок',
         rankEmoji: currentSalaryResult?.currentTier?.levelEmoji || '🌱',
+        nextRank: currentSalaryResult?.nextTier?.levelName || null,
+        salesUntilNext: currentSalaryResult?.salesUntilNextTier || 0,
+        progress: (() => {
+          const tier = currentSalaryResult?.currentTier
+          if (!tier) return 0
+          const tierSize = tier.maxSales - tier.minSales
+          const salesInTier = currentStats.netSales - tier.minSales
+          return Math.min(100, Math.max(0, (salesInTier / tierSize) * 100))
+        })(),
         position: currentPosition,
         streak: streak.currentStreak,
         maxStreak: streak.maxStreak,

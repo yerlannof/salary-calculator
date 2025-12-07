@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const department = searchParams.get('department') as DepartmentType | null
     const period = searchParams.get('period') // YYYY-MM
     const store = searchParams.get('store') // optional: specific store ID
+    const date = searchParams.get('date') // optional: YYYY-MM-DD for specific day
 
     if (!department || !period) {
       return NextResponse.json(
@@ -23,10 +24,32 @@ export async function GET(request: NextRequest) {
 
     // Парсим период для фильтрации продаж
     const [year, month] = period.split('-')
-    const startDate = `${year}-${month}-01`
-    const nextMonth = parseInt(month) === 12 ? 1 : parseInt(month) + 1
-    const nextYear = parseInt(month) === 12 ? parseInt(year) + 1 : parseInt(year)
-    const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`
+
+    // Если указана конкретная дата - фильтруем по дню, иначе по всему месяцу
+    let startDate: string
+    let endDate: string
+    let yesterdayStart: string | null = null
+    let yesterdayEnd: string | null = null
+
+    if (date) {
+      // Конкретный день
+      startDate = date
+      const nextDay = new Date(date)
+      nextDay.setDate(nextDay.getDate() + 1)
+      endDate = nextDay.toISOString().slice(0, 10)
+
+      // Вчерашний день для сравнения позиций
+      const yesterday = new Date(date)
+      yesterday.setDate(yesterday.getDate() - 1)
+      yesterdayStart = yesterday.toISOString().slice(0, 10)
+      yesterdayEnd = date
+    } else {
+      // Весь месяц
+      startDate = `${year}-${month}-01`
+      const nextMonth = parseInt(month) === 12 ? 1 : parseInt(month) + 1
+      const nextYear = parseInt(month) === 12 ? parseInt(year) + 1 : parseInt(year)
+      endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`
+    }
 
     // Референс-дата для streak: последний день периода или сегодня (что раньше)
     const today = new Date().toISOString().slice(0, 10)
@@ -275,13 +298,62 @@ export async function GET(request: NextRequest) {
     // Сортируем по чистым продажам (больше → выше)
     result.sort((a, b) => b.netSales - a.netSales)
 
-    // Заполняем позиции и изменения
+    // Заполняем позиции
     result.forEach((emp, idx) => {
       emp.position = idx + 1
-      if (emp.prevPosition !== null) {
-        emp.positionChange = emp.prevPosition - emp.position // положительное = поднялся
-      }
     })
+
+    // Если смотрим конкретный день - сравниваем со вчерашним днём
+    if (date && yesterdayStart && yesterdayEnd) {
+      // Получаем вчерашние продажи
+      type YesterdaySale = { moysklad_employee_id: string; amount: number }
+      const { data: yesterdaySalesData } = await supabaseAdmin
+        .from('sales')
+        .select('moysklad_employee_id, amount')
+        .gte('sale_date', yesterdayStart)
+        .lt('sale_date', yesterdayEnd)
+        .in('retail_store_id', storeIds)
+
+      const yesterdaySales = yesterdaySalesData as YesterdaySale[] | null
+
+      // Группируем по сотруднику
+      const yesterdaySalesByEmp: Record<string, number> = {}
+      for (const sale of yesterdaySales || []) {
+        if (!yesterdaySalesByEmp[sale.moysklad_employee_id]) {
+          yesterdaySalesByEmp[sale.moysklad_employee_id] = 0
+        }
+        yesterdaySalesByEmp[sale.moysklad_employee_id] += Number(sale.amount)
+      }
+
+      // Вычисляем вчерашние позиции
+      const yesterdayRanking = result
+        .map(emp => ({
+          moysklad_id: emp.moysklad_id,
+          sales: yesterdaySalesByEmp[emp.moysklad_id] || 0
+        }))
+        .sort((a, b) => b.sales - a.sales)
+
+      const yesterdayPositionMap: Record<string, number> = {}
+      yesterdayRanking.forEach((emp, idx) => {
+        yesterdayPositionMap[emp.moysklad_id] = idx + 1
+      })
+
+      // Заполняем изменения позиций
+      result.forEach(emp => {
+        const yesterdayPos = yesterdayPositionMap[emp.moysklad_id]
+        if (yesterdayPos !== undefined) {
+          emp.prevPosition = yesterdayPos
+          emp.positionChange = yesterdayPos - emp.position // положительное = поднялся
+        }
+      })
+    } else if (!date) {
+      // Для месячного просмотра - используем prevRankMap из monthly_rankings
+      result.forEach(emp => {
+        if (emp.prevPosition !== null) {
+          emp.positionChange = emp.prevPosition - emp.position
+        }
+      })
+    }
 
     // Также получаем информацию о последней синхронизации
     const { data: lastSyncData } = await supabaseAdmin
@@ -298,6 +370,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       employees: result,
       period,
+      date: date || null, // конкретная дата если указана
       department,
       lastSync: lastSync ? {
         at: lastSync.completed_at,
