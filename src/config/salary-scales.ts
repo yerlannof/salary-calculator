@@ -27,41 +27,44 @@ export interface LocationConfig {
 }
 
 /**
- * Стандартная прогрессивная шкала для всех должностей
+ * Единая прогрессивная шкала для всех должностей (версия 10.12.2025)
+ *
+ * Особенности:
+ * - 6 уровней по 1 млн каждый
+ * - Скачок после 3 млн (5% → 7%) - мотивация добить до цели
+ * - Цель на человека: 3 млн продаж в месяц
+ * - Ниже 2 млн: слабый сотрудник
  */
 const STANDARD_TIERS: SalaryTier[] = [
-  { minSales: 0, maxSales: 1000000, percentage: 5, levelName: 'Новичок', levelEmoji: '🌱' },
-  { minSales: 1000000, maxSales: 2000000, percentage: 6, levelName: 'Продавец', levelEmoji: '💼' },
-  { minSales: 2000000, maxSales: 2500000, percentage: 7, levelName: 'Опытный', levelEmoji: '⭐' },
-  { minSales: 2500000, maxSales: 3000000, percentage: 8, levelName: 'Мастер', levelEmoji: '🎯' },
-  { minSales: 3000000, maxSales: 3500000, percentage: 9, levelName: 'Профи', levelEmoji: '🔥' },
-  { minSales: 3500000, maxSales: 4000000, percentage: 10, levelName: 'Эксперт', levelEmoji: '💎' },
-  { minSales: 4000000, maxSales: 4500000, percentage: 11, levelName: 'Элита', levelEmoji: '👑' },
-  { minSales: 4500000, maxSales: 5000000, percentage: 12, levelName: 'Легенда', levelEmoji: '🏆' },
-  { minSales: 5000000, maxSales: 5500000, percentage: 13, levelName: 'Бог продаж', levelEmoji: '⚡' },
+  { minSales: 0, maxSales: 1000000, percentage: 3, levelName: 'Новичок', levelEmoji: 'sprout' },
+  { minSales: 1000000, maxSales: 2000000, percentage: 4, levelName: 'Продавец', levelEmoji: 'shopping-bag' },
+  { minSales: 2000000, maxSales: 3000000, percentage: 5, levelName: 'Опытный', levelEmoji: 'star' },
+  { minSales: 3000000, maxSales: 4000000, percentage: 7, levelName: 'Мастер', levelEmoji: 'flame' },  // Скачок!
+  { minSales: 4000000, maxSales: 5000000, percentage: 8, levelName: 'Профи', levelEmoji: 'zap' },
+  { minSales: 5000000, maxSales: 6000000, percentage: 9, levelName: 'Легенда', levelEmoji: 'crown' },
 ];
 
 /**
- * Все локации и должности
+ * Все локации и должности (версия 10.12.2025)
  */
 export const LOCATIONS: LocationConfig[] = [
   {
-    id: 'online',
-    name: 'Онлайн',
-    emoji: '🌐',
+    id: 'tsum-online',
+    name: 'ЦУМ + Онлайн',
+    emoji: '🏢',
     roles: [
       {
-        id: 'online-manager',
-        name: 'Онлайн-менеджер',
-        baseSalary: 50000,
-        maxMonthlySales: 5500000,
+        id: 'senior-admin',
+        name: 'Старший администратор',
+        baseSalary: 150000,
+        maxMonthlySales: 6000000,
         tiers: STANDARD_TIERS,
       },
       {
-        id: 'senior-online-manager',
-        name: 'Старший онлайн-менеджер',
-        baseSalary: 90000,
-        maxMonthlySales: 5500000,
+        id: 'tsum-seller',
+        name: 'Продавец ЦУМ',
+        baseSalary: 80000,
+        maxMonthlySales: 6000000,
         tiers: STANDARD_TIERS,
       },
     ],
@@ -72,45 +75,31 @@ export const LOCATIONS: LocationConfig[] = [
     emoji: '🏬',
     roles: [
       {
-        id: 'trc-seller',
-        name: 'Продавец-консультант',
-        baseSalary: 40000,
-        maxMonthlySales: 5500000,
+        id: 'moscow-admin',
+        name: 'Админ-кассир',
+        baseSalary: 110000,
+        maxMonthlySales: 6000000,
         tiers: STANDARD_TIERS,
       },
       {
-        id: 'trc-admin',
-        name: 'Админ-Кассир',
-        baseSalary: 80000,
-        maxMonthlySales: 5500000,
-        tiers: STANDARD_TIERS,
-      },
-    ],
-  },
-  {
-    id: 'td-tsum',
-    name: 'ТД ЦУМ',
-    emoji: '🏢',
-    roles: [
-      {
-        id: 'tsum-admin',
-        name: 'Админ-Кассир',
-        baseSalary: 80000,
-        maxMonthlySales: 5500000,
-        tiers: STANDARD_TIERS,
-      },
-    ],
-  },
-  {
-    id: 'almaty',
-    name: 'Алматы',
-    emoji: '🏔️',
-    roles: [
-      {
-        id: 'almaty-seller',
+        id: 'moscow-seller',
         name: 'Продавец',
-        baseSalary: 50000,
-        maxMonthlySales: 5500000,
+        baseSalary: 80000,
+        maxMonthlySales: 6000000,
+        tiers: STANDARD_TIERS,
+      },
+    ],
+  },
+  {
+    id: 'baytursynova',
+    name: 'Байтурсынова',
+    emoji: '🏪',
+    roles: [
+      {
+        id: 'baytursynova-seller',
+        name: 'Продавец',
+        baseSalary: 80000,
+        maxMonthlySales: 6000000,
         tiers: STANDARD_TIERS,
       },
     ],
@@ -123,8 +112,8 @@ export const LOCATIONS: LocationConfig[] = [
       {
         id: 'astana-seller',
         name: 'Продавец',
-        baseSalary: 50000,
-        maxMonthlySales: 5500000,
+        baseSalary: 80000,
+        maxMonthlySales: 6000000,
         tiers: STANDARD_TIERS,
       },
     ],
@@ -145,18 +134,22 @@ export function getRoleConfig(locationId: string, roleId: string): RoleConfig | 
 export const ONLINE_MANAGER_CONFIG = LOCATIONS[0].roles[0];
 
 /**
- * Маппинг отделов на конфиги ролей
+ * Маппинг отделов на конфиги ролей (версия 10.12.2025)
  *
  * Определяет какая роль и оклад используется для расчета ЗП сотрудников каждого отдела.
  * Используется в Team API и Employee API для единообразного расчета зарплат.
+ *
+ * ВАЖНО: Пока все сотрудники считаются как "Продавцы" (80k оклад).
+ * В будущем должность будет определяться через МойСклад или админку.
  */
 import type { DepartmentType } from '@/lib/supabase/types'
 
 export const DEPARTMENT_ROLE_CONFIG: Record<DepartmentType, { locationId: string; roleId: string }> = {
-  almaty: { locationId: 'almaty', roleId: 'almaty-seller' },      // Оклад: 50,000 ₸ (Москва, ЦУМ, Байтурсынова, Online New)
-  astana: { locationId: 'astana', roleId: 'astana-seller' },      // Оклад: 50,000 ₸ (Аружан, Астана Стрит, Онлайн Астана)
-  // Старые отделы (сохраняем для совместимости со старыми данными)
-  moscow: { locationId: 'trc-moscow', roleId: 'trc-seller' },     // Оклад: 40,000 ₸ (deprecated)
-  tsum: { locationId: 'td-tsum', roleId: 'tsum-admin' },          // Оклад: 80,000 ₸ (deprecated)
-  online: { locationId: 'online', roleId: 'online-manager' },     // Оклад: 50,000 ₸ (deprecated)
+  // Новая структура (10.12.2025)
+  almaty: { locationId: 'tsum-online', roleId: 'tsum-seller' },   // ЦУМ, Online New → Продавец 80k (пока все как продавцы)
+  astana: { locationId: 'astana', roleId: 'astana-seller' },      // Астана → Продавец 80k
+  // Legacy отделы (для совместимости)
+  moscow: { locationId: 'trc-moscow', roleId: 'moscow-seller' },  // Москва → Продавец 80k (пока все как продавцы)
+  tsum: { locationId: 'tsum-online', roleId: 'tsum-seller' },     // ЦУМ → Продавец 80k
+  online: { locationId: 'tsum-online', roleId: 'tsum-seller' },   // Онлайн → Продавец 80k (объединён с ЦУМ)
 };
