@@ -73,10 +73,15 @@ export function SalesSlider({
 
         {/* Custom thumb */}
         <motion.div
-          className="absolute top-1/2 -translate-y-1/2 w-7 h-7 bg-white rounded-full border-4 border-accent-primary pointer-events-none shadow-lg z-20"
-          style={{ left: `calc(${percentage}% - 14px)` }}
+          className="absolute w-7 h-7 bg-white rounded-full border-4 border-accent-primary pointer-events-none shadow-lg z-20"
+          style={{
+            left: `${percentage}%`,
+            top: '50%'
+          }}
           animate={{
             scale: isDragging ? 1.2 : 1,
+            x: '-50%',
+            y: '-50%',
             boxShadow: isDragging
               ? '0 0 30px rgb(var(--accent-primary) / 0.6)'
               : '0 4px 12px rgb(0 0 0 / 0.15)'
