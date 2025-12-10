@@ -163,7 +163,7 @@ export function SalaryCalculator() {
         </h3>
         <div className="space-y-2">
           {result.breakdown.map((tier, idx) => {
-            const amount = tier.bonusEarned
+            const amount = tier.bonusAmount
             if (amount === 0) return null
 
             return (

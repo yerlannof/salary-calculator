@@ -64,7 +64,8 @@ export function SalesSlider({
           onMouseUp={() => setIsDragging(false)}
           onTouchStart={() => setIsDragging(true)}
           onTouchEnd={() => setIsDragging(false)}
-          className="absolute inset-0 w-full opacity-0 cursor-pointer"
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none"
+          style={{ WebkitAppearance: 'none' }}
         />
 
         {/* Custom thumb */}

@@ -19,7 +19,8 @@ export function SalaryCard({ salary, base, bonus, level, levelPercent, progress 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="relative overflow-hidden rounded-3xl bg-gradient-accent p-8"
+      className="relative overflow-hidden rounded-3xl p-8"
+      style={{ background: 'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)' }}
     >
       {/* Glass overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none" />
