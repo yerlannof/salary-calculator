@@ -3,72 +3,52 @@
 import { memo } from "react"
 import {
   Sprout,
-  Briefcase,
+  ShoppingBag,
   Star,
-  Target,
   Flame,
-  Gem,
-  Crown,
-  Trophy,
   Zap,
+  Crown,
   LucideIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-// Простая русская система рангов
+// Esports 3-tier system
+// Tier 1 (Low): gray/muted
+// Tier 2 (Mid): cyan
+// Tier 3 (High): magenta with glow
+
+type TierLevel = 'low' | 'mid' | 'high'
+
+const TIER_STYLES: Record<TierLevel, { color: string; bg: string; border: string; glow?: string }> = {
+  low: {
+    color: 'text-esports-muted',
+    bg: 'bg-esports-elevated',
+    border: 'border-esports-border',
+  },
+  mid: {
+    color: 'text-neon-cyan',
+    bg: 'bg-neon-cyan/10',
+    border: 'border-neon-cyan/30',
+  },
+  high: {
+    color: 'text-neon-magenta',
+    bg: 'bg-neon-magenta/10',
+    border: 'border-neon-magenta/30',
+    glow: 'glow-magenta',
+  },
+}
+
+// Level configuration with tier assignment
 export const LEVEL_CONFIG: Record<string, {
   icon: LucideIcon
-  color: string
-  bg: string
-  glow?: string
+  tier: TierLevel
 }> = {
-  'Новичок': {
-    icon: Sprout,
-    color: 'text-green-500',
-    bg: 'bg-green-500/20'
-  },
-  'Продавец': {
-    icon: Briefcase,
-    color: 'text-blue-500',
-    bg: 'bg-blue-500/20'
-  },
-  'Опытный': {
-    icon: Star,
-    color: 'text-yellow-500',
-    bg: 'bg-yellow-500/20'
-  },
-  'Мастер': {
-    icon: Target,
-    color: 'text-orange-500',
-    bg: 'bg-orange-500/20'
-  },
-  'Профи': {
-    icon: Flame,
-    color: 'text-red-500',
-    bg: 'bg-red-500/20'
-  },
-  'Эксперт': {
-    icon: Gem,
-    color: 'text-purple-500',
-    bg: 'bg-purple-500/20'
-  },
-  'Элита': {
-    icon: Crown,
-    color: 'text-amber-500',
-    bg: 'bg-amber-500/20'
-  },
-  'Легенда': {
-    icon: Trophy,
-    color: 'text-cyan-400',
-    bg: 'bg-cyan-400/20',
-    glow: 'drop-shadow-[0_0_6px_rgba(34,211,238,0.5)]'
-  },
-  'Бог продаж': {
-    icon: Zap,
-    color: 'text-yellow-400',
-    bg: 'bg-gradient-to-br from-yellow-500/30 to-orange-500/30',
-    glow: 'drop-shadow-[0_0_10px_rgba(250,204,21,0.7)]'
-  },
+  'Новичок': { icon: Sprout, tier: 'low' },
+  'Продавец': { icon: ShoppingBag, tier: 'low' },
+  'Опытный': { icon: Star, tier: 'mid' },
+  'Мастер': { icon: Flame, tier: 'mid' },
+  'Профи': { icon: Zap, tier: 'high' },
+  'Легенда': { icon: Crown, tier: 'high' },
 }
 
 interface LevelIconProps {
@@ -83,6 +63,7 @@ export const LevelIcon = memo(function LevelIcon({
   className
 }: LevelIconProps) {
   const config = LEVEL_CONFIG[levelName] || LEVEL_CONFIG['Новичок']
+  const tierStyle = TIER_STYLES[config.tier]
   const Icon = config.icon
 
   const sizeClasses = {
@@ -92,11 +73,11 @@ export const LevelIcon = memo(function LevelIcon({
   }
 
   return (
-    <Icon className={cn(sizeClasses[size], config.color, config.glow, className)} />
+    <Icon className={cn(sizeClasses[size], tierStyle.color, className)} />
   )
 })
 
-// Компонент для бейджа уровня
+// Esports-style level badge
 export const LevelBadge = memo(function LevelBadge({
   levelName,
   className
@@ -105,17 +86,47 @@ export const LevelBadge = memo(function LevelBadge({
   className?: string
 }) {
   const config = LEVEL_CONFIG[levelName] || LEVEL_CONFIG['Новичок']
+  const tierStyle = TIER_STYLES[config.tier]
   const Icon = config.icon
 
   return (
     <div className={cn(
-      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
-      config.bg,
-      config.glow && "shadow-lg",
+      "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide",
+      "border",
+      tierStyle.bg,
+      tierStyle.border,
+      tierStyle.color,
       className
     )}>
-      <Icon className={cn("w-3.5 h-3.5", config.color, config.glow)} />
+      <Icon className="w-3 h-3" />
       <span>{levelName}</span>
     </div>
   )
 })
+
+// For backward compatibility - expose bg property through helper
+export function getLevelStyle(levelName: string) {
+  const config = LEVEL_CONFIG[levelName] || LEVEL_CONFIG['Новичок']
+  const tierStyle = TIER_STYLES[config.tier]
+  return {
+    ...config,
+    color: tierStyle.color,
+    bg: tierStyle.bg,
+    glow: tierStyle.glow,
+  }
+}
+
+// Icon ID to component mapping (for emoji field compatibility)
+const ICON_MAP: Record<string, LucideIcon> = {
+  'sprout': Sprout,
+  'shopping-bag': ShoppingBag,
+  'star': Star,
+  'flame': Flame,
+  'zap': Zap,
+  'crown': Crown,
+}
+
+// Get icon component from ID string
+export function getIconComponent(iconId: string): LucideIcon {
+  return ICON_MAP[iconId] || Sprout
+}
