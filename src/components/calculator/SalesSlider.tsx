@@ -35,13 +35,13 @@ export function SalesSlider({
       </div>
 
       {/* Custom slider */}
-      <div className="relative h-3 mb-6">
+      <div className="relative h-12 mb-6">
         {/* Background track */}
-        <div className="absolute inset-0 bg-bg-secondary rounded-full" />
+        <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-3 bg-bg-secondary rounded-full" />
 
         {/* Filled track with glow */}
         <motion.div
-          className="absolute inset-y-0 left-0 bg-gradient-accent rounded-full"
+          className="absolute top-1/2 -translate-y-1/2 left-0 h-3 bg-gradient-accent rounded-full"
           style={{ width: `${percentage}%` }}
           animate={{
             width: `${percentage}%`,
@@ -64,13 +64,16 @@ export function SalesSlider({
           onMouseUp={() => setIsDragging(false)}
           onTouchStart={() => setIsDragging(true)}
           onTouchEnd={() => setIsDragging(false)}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none"
-          style={{ WebkitAppearance: 'none' }}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+          style={{
+            WebkitAppearance: 'none',
+            appearance: 'none'
+          }}
         />
 
         {/* Custom thumb */}
         <motion.div
-          className="absolute top-1/2 -translate-y-1/2 w-7 h-7 bg-white rounded-full border-4 border-accent-primary pointer-events-none"
+          className="absolute top-1/2 -translate-y-1/2 w-7 h-7 bg-white rounded-full border-4 border-accent-primary pointer-events-none shadow-lg z-20"
           style={{ left: `calc(${percentage}% - 14px)` }}
           animate={{
             scale: isDragging ? 1.2 : 1,
