@@ -128,11 +128,14 @@ export function SalaryCalculator() {
           </label>
           <div className="flex gap-2 flex-wrap">
             {LOCATIONS.map((location) => (
-              <button
+              <motion.button
                 key={location.id}
                 onClick={() => setSelectedLocationId(location.id)}
+                whileHover={{ scale: 1.02, y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                  "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                   selectedLocationId === location.id
                     ? "bg-gradient-accent text-white shadow-glow"
                     : "bg-bg-secondary text-text-secondary hover:bg-bg-card"
@@ -140,7 +143,7 @@ export function SalaryCalculator() {
               >
                 <span>{location.emoji}</span>
                 <span>{location.name}</span>
-              </button>
+              </motion.button>
             ))}
           </div>
         </div>
@@ -153,18 +156,21 @@ export function SalaryCalculator() {
           </label>
           <div className="flex gap-2 flex-wrap">
             {selectedLocation.roles.map((role) => (
-              <button
+              <motion.button
                 key={role.id}
                 onClick={() => setSelectedRoleId(role.id)}
+                whileHover={{ scale: 1.02, y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 className={cn(
-                  "px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                  "px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                   selectedRoleId === role.id
                     ? "bg-gradient-accent text-white shadow-glow"
                     : "bg-bg-secondary text-text-secondary hover:bg-bg-card"
                 )}
               >
                 {role.name}
-              </button>
+              </motion.button>
             ))}
           </div>
         </div>
