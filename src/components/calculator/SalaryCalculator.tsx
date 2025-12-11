@@ -6,6 +6,7 @@ import { calculateSalary, formatMoney, formatMoneyShort } from "@/lib/calculatio
 import { LOCATIONS } from "@/config/salary-scales"
 import { SalaryCard } from "./SalaryCard"
 import { SalesSlider } from "./SalesSlider"
+import { StickySlider } from "./StickySlider"
 import { ThemeToggle } from "./ThemeToggle"
 import { MapPin, Users, ChevronDown, Target, TrendingUp, Sprout, ShoppingBag, Star, Flame, Zap, Crown } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -186,12 +187,22 @@ export function SalaryCalculator() {
         progress={progress}
       />
 
-      {/* Sales slider - sticky */}
-      <div className="sticky top-0 z-30 -mx-4 px-4 py-2 bg-bg-primary/80 backdrop-blur-lg">
-        <SalesSlider
+      {/* Sales slider - full version */}
+      <SalesSlider
+        value={sales}
+        onChange={setSales}
+        max={maxSales}
+      />
+
+      {/* Sticky compact slider */}
+      <div className="sticky top-0 z-30 -mx-4 px-4 pt-2 pb-1">
+        <StickySlider
           value={sales}
           onChange={setSales}
           max={maxSales}
+          totalSalary={result.totalSalary}
+          baseSalary={result.baseSalary}
+          totalBonus={result.totalBonus}
         />
       </div>
 
