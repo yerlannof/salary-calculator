@@ -8,7 +8,8 @@ import { SalaryCard } from "./SalaryCard"
 import { SalesSlider } from "./SalesSlider"
 import { StickySlider } from "./StickySlider"
 import { ThemeToggle } from "./ThemeToggle"
-import { MapPin, Users, ChevronDown, Target, TrendingUp, Sprout, ShoppingBag, Star, Flame, Zap, Crown } from "lucide-react"
+import { Confetti } from "@/components/ui/Confetti"
+import { MapPin, Users, ChevronDown, Target, TrendingUp, Sprout, ShoppingBag, Star, Flame, Zap, Crown, Building2, Store, MapPinned, Landmark } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // "What if" scenarios
@@ -24,6 +25,14 @@ const LEVEL_ICONS: Record<string, React.ElementType> = {
   'Легенда': Crown,
 }
 
+// Location icons mapping (unified Lucide icons instead of emoji)
+const LOCATION_ICONS: Record<string, React.ElementType> = {
+  'tsum-online': Building2,
+  'trc-moscow': Store,
+  'baytursynova': MapPinned,
+  'astana': Landmark,
+}
+
 export function SalaryCalculator() {
   // Location & Role selection
   const [selectedLocationId, setSelectedLocationId] = useState(LOCATIONS[0].id)
@@ -31,6 +40,8 @@ export function SalaryCalculator() {
   const [sales, setSales] = useState(3000000)
   const [showHowItWorks, setShowHowItWorks] = useState(false)
   const [showStickySlider, setShowStickySlider] = useState(false)
+  const [prevLevel, setPrevLevel] = useState<string | null>(null)
+  const [showConfetti, setShowConfetti] = useState(false)
   const mainSliderRef = useRef<HTMLDivElement>(null)
 
   const selectedLocation = useMemo(() =>
@@ -106,6 +117,25 @@ export function SalaryCalculator() {
     return () => observer.disconnect()
   }, [])
 
+  // Detect level up and trigger confetti
+  const currentLevel = result.currentTier?.levelName || 'Новичок'
+  useEffect(() => {
+    // Only trigger confetti on level UP (not on initial load or level down)
+    if (prevLevel && currentLevel !== prevLevel) {
+      // Check if it's a level UP by comparing tier indexes
+      const levelOrder = ['Новичок', 'Продавец', 'Опытный', 'Мастер', 'Профи', 'Легенда']
+      const prevIndex = levelOrder.indexOf(prevLevel)
+      const currentIndex = levelOrder.indexOf(currentLevel)
+
+      if (currentIndex > prevIndex) {
+        setShowConfetti(true)
+        // Reset confetti after animation
+        setTimeout(() => setShowConfetti(false), 100)
+      }
+    }
+    setPrevLevel(currentLevel)
+  }, [currentLevel, prevLevel])
+
   // Calculate progress for circular indicator (0-100)
   const progress = result.currentTier
     ? ((sales - result.currentTier.minSales) / (result.currentTier.maxSales - result.currentTier.minSales)) * 100
@@ -129,6 +159,9 @@ export function SalaryCalculator() {
 
   return (
     <div className="space-y-6">
+      {/* Confetti celebration on level up */}
+      <Confetti trigger={showConfetti} />
+
       {/* Header with theme toggle */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-display font-bold text-text-primary">
@@ -146,24 +179,27 @@ export function SalaryCalculator() {
             Точка
           </label>
           <div className="flex gap-2 flex-wrap">
-            {LOCATIONS.map((location) => (
-              <motion.button
-                key={location.id}
-                onClick={() => setSelectedLocationId(location.id)}
-                whileHover={{ scale: 1.02, y: -1 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                  selectedLocationId === location.id
-                    ? "bg-gradient-accent text-white shadow-glow"
-                    : "bg-bg-secondary text-text-secondary hover:bg-bg-card"
-                )}
-              >
-                <span>{location.emoji}</span>
-                <span>{location.name}</span>
-              </motion.button>
-            ))}
+            {LOCATIONS.map((location) => {
+              const LocationIcon = LOCATION_ICONS[location.id] || MapPin
+              return (
+                <motion.button
+                  key={location.id}
+                  onClick={() => setSelectedLocationId(location.id)}
+                  whileHover={{ scale: 1.02, y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                    selectedLocationId === location.id
+                      ? "bg-gradient-accent text-white shadow-glow"
+                      : "bg-bg-secondary text-text-secondary hover:bg-bg-card"
+                  )}
+                >
+                  <LocationIcon className="w-4 h-4" />
+                  <span>{location.name}</span>
+                </motion.button>
+              )
+            })}
           </div>
         </div>
 
