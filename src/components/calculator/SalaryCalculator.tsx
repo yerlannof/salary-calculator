@@ -186,12 +186,14 @@ export function SalaryCalculator() {
         progress={progress}
       />
 
-      {/* Sales slider */}
-      <SalesSlider
-        value={sales}
-        onChange={setSales}
-        max={maxSales}
-      />
+      {/* Sales slider - sticky */}
+      <div className="sticky top-0 z-30 -mx-4 px-4 py-2 bg-bg-primary/80 backdrop-blur-lg">
+        <SalesSlider
+          value={sales}
+          onChange={setSales}
+          max={maxSales}
+        />
+      </div>
 
       {/* Breakdown */}
       <div className="bg-bg-card rounded-2xl p-5 shadow-soft border border-border-subtle">
