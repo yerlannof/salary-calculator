@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 import { SalaryBreakdownItem } from "@/lib/calculations"
 import { formatMoneyShort } from "@/lib/calculations"
 import { cn } from "@/lib/utils"
-import { LevelIcon, LEVEL_CONFIG } from "./LevelIcon"
+import { LevelIcon, getLevelStyle } from "./LevelIcon"
 import { Check } from "lucide-react"
 
 interface LevelProgressProps {
@@ -29,7 +29,7 @@ const TierItem = memo(function TierItem({
       ? (tier.salesInTier / tierSize) * 100
       : 0
 
-  const config = LEVEL_CONFIG[tier.levelName]
+  const levelStyle = getLevelStyle(tier.levelName)
 
   return (
     <motion.div
@@ -48,7 +48,7 @@ const TierItem = memo(function TierItem({
           {/* Icon */}
           <div className={cn(
             "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
-            tier.isCompleted ? "bg-green-500/20" : config?.bg || "bg-muted"
+            tier.isCompleted ? "bg-green-500/20" : levelStyle.bg
           )}>
             {tier.isCompleted ? (
               <Check className="w-4 h-4 text-green-500" />

@@ -1,12 +1,15 @@
 "use client"
 
 import { SalaryCalculator } from "@/components/calculator/SalaryCalculator"
+import { AppBackground } from "@/components/calculator/AppBackground"
 import Link from "next/link"
 import { Trophy } from "lucide-react"
 
 export default function Home() {
   return (
-    <div className="container max-w-lg mx-auto px-4 py-8">
+    <>
+      <AppBackground />
+      <div className="container max-w-lg mx-auto px-4 py-8 relative z-10">
       {/* Кнопка перехода на рейтинг */}
       <Link href="/team-sales">
         <div className="mb-6 p-4 bg-gradient-to-r from-yellow-500/20 via-amber-500/10 to-yellow-600/20 border border-yellow-500/30 rounded-xl cursor-pointer hover:border-yellow-500/50 transition-all group">
@@ -26,6 +29,7 @@ export default function Home() {
       </Link>
 
       <SalaryCalculator />
-    </div>
+      </div>
+    </>
   )
 }

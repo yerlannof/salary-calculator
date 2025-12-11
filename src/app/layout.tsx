@@ -1,10 +1,22 @@
 import type { Metadata, Viewport } from "next"
-import { Inter } from "next/font/google"
+import { Unbounded, Manrope } from "next/font/google"
 import { ThemeProvider } from "@/components/theme/ThemeProvider"
 import { QueryProvider } from "@/providers/QueryProvider"
 import "./globals.css"
 
-const inter = Inter({ subsets: ["latin", "cyrillic"] })
+const unbounded = Unbounded({
+  subsets: ['cyrillic', 'latin'],
+  variable: '--font-unbounded',
+  weight: ['400', '600', '800'],
+  display: 'swap',
+})
+
+const manrope = Manrope({
+  subsets: ['cyrillic', 'latin'],
+  variable: '--font-manrope',
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+})
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -32,10 +44,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${unbounded.variable} ${manrope.variable} font-sans`}>
         <QueryProvider>
           <ThemeProvider>
-            <main className="min-h-screen bg-background">
+            <main className="min-h-screen bg-bg-primary">
               {children}
             </main>
           </ThemeProvider>
