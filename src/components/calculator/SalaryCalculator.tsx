@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { calculateSalary, formatMoney, formatMoneyShort } from "@/lib/calculations"
 import { LOCATIONS } from "@/config/salary-scales"
@@ -30,6 +30,8 @@ export function SalaryCalculator() {
   const [selectedRoleId, setSelectedRoleId] = useState(LOCATIONS[0].roles[0].id)
   const [sales, setSales] = useState(3000000)
   const [showHowItWorks, setShowHowItWorks] = useState(false)
+  const [showStickySlider, setShowStickySlider] = useState(false)
+  const mainSliderRef = useRef<HTMLDivElement>(null)
 
   const selectedLocation = useMemo(() =>
     LOCATIONS.find(l => l.id === selectedLocationId) || LOCATIONS[0],
@@ -87,6 +89,22 @@ export function SalaryCalculator() {
     localStorage.setItem('selectedLocation', selectedLocationId)
     localStorage.setItem('selectedRole', selectedRoleId)
   }, [sales, selectedLocationId, selectedRoleId])
+
+  // Show sticky slider when main slider is out of view
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setShowStickySlider(!entry.isIntersecting)
+      },
+      { threshold: 0, rootMargin: '-50px 0px 0px 0px' }
+    )
+
+    if (mainSliderRef.current) {
+      observer.observe(mainSliderRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [])
 
   // Calculate progress for circular indicator (0-100)
   const progress = result.currentTier
@@ -188,23 +206,35 @@ export function SalaryCalculator() {
       />
 
       {/* Sales slider - full version */}
-      <SalesSlider
-        value={sales}
-        onChange={setSales}
-        max={maxSales}
-      />
-
-      {/* Sticky compact slider */}
-      <div className="sticky top-0 z-30 -mx-4 px-4 pt-2 pb-1">
-        <StickySlider
+      <div ref={mainSliderRef}>
+        <SalesSlider
           value={sales}
           onChange={setSales}
           max={maxSales}
-          totalSalary={result.totalSalary}
-          baseSalary={result.baseSalary}
-          totalBonus={result.totalBonus}
         />
       </div>
+
+      {/* Sticky compact slider - appears on scroll */}
+      <AnimatePresence>
+        {showStickySlider && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+            className="fixed top-0 left-0 right-0 z-50 px-4 pt-2 pb-1 max-w-lg mx-auto"
+          >
+            <StickySlider
+              value={sales}
+              onChange={setSales}
+              max={maxSales}
+              totalSalary={result.totalSalary}
+              baseSalary={result.baseSalary}
+              totalBonus={result.totalBonus}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Breakdown */}
       <div className="bg-bg-card rounded-2xl p-5 shadow-soft border border-border-subtle">
