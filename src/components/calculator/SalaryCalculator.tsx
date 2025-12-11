@@ -340,40 +340,29 @@ export function SalaryCalculator() {
         </div>
       </div>
 
-      {/* What If Section */}
+      {/* What If Section - Simplified */}
       {whatIfScenarios.length > 0 && (
         <div className="bg-bg-card rounded-2xl p-5 shadow-soft border border-border-subtle">
-          <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2 mb-1">
+          <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2 mb-4">
             <TrendingUp className="w-4 h-4" />
-            А что если продать ещё?
+            Продай ещё
           </h3>
-          <p className="text-xs text-text-muted mb-4">Нажми, чтобы увидеть расчёт</p>
-          <div className="space-y-2">
+          <div className="flex gap-2">
             {whatIfScenarios.map((scenario: any, index) => scenario && (
               <motion.button
                 key={index}
                 onClick={() => setSales(scenario.newSales)}
+                whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full p-4 rounded-xl bg-bg-secondary hover:bg-bg-card border border-transparent hover:border-accent-primary/30 transition-all text-left"
+                className="flex-1 p-3 rounded-xl bg-bg-secondary hover:bg-accent-primary/10 border border-transparent hover:border-accent-primary/30 transition-all text-center"
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs text-text-secondary">
-                        {formatMoneyShort(sales)} → {formatMoneyShort(scenario.newSales)}
-                      </span>
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-accent-primary/10 text-accent-primary font-semibold">
-                        +{formatMoneyShort(scenario.extraSales)}
-                      </span>
-                    </div>
-                    <div className="text-base font-bold text-text-primary">
-                      {formatMoney(scenario.newTotal)}
-                    </div>
-                    <div className="text-xs text-accent-primary font-medium">
-                      +{formatMoneyShort(scenario.extraBonus)} к текущей
-                    </div>
-                  </div>
-                  <ChevronDown className="w-5 h-5 text-text-muted -rotate-90" />
+                <div className="text-xs text-text-muted mb-1">продажи</div>
+                <div className="text-sm font-bold text-text-primary mb-2">
+                  +{formatMoneyShort(scenario.extraSales)}
+                </div>
+                <div className="text-xs text-text-muted">зарплата</div>
+                <div className="text-base font-bold text-accent-primary">
+                  +{formatMoneyShort(scenario.extraBonus)}
                 </div>
               </motion.button>
             ))}
